@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 const translations = {
@@ -20,7 +20,7 @@ const translations = {
     features: [
       { icon: "🔒", title: "AES-256 Encryption", desc: "Military-grade encryption for every data packet." },
       { icon: "⚡", title: "Lightning Speed", desc: "Optimized servers worldwide. No lag, no buffering." },
-      { icon: "🌍", title: "50+ Locations", desc: "Bypass geo-restrictions and access content from anywhere." },
+      { icon: "🦎", title: "50+ Locations", desc: "Bypass geo-restrictions and access content from anywhere." },
       { icon: "🚫", title: "No-logs Policy", desc: "We don't store or share data about your activity." },
       { icon: "📱", title: "All Platforms", desc: "Windows, macOS, iOS, Android, Linux. One app." },
       { icon: "🦎", title: "Adaptive Protocol", desc: "Smart switching between protocols for max stability." }
@@ -42,7 +42,7 @@ const translations = {
     signIn: "Войти",
     footer: "© 2024 Lizard Connor's Pipes. Все права защищены.",
     features: [
-      { icon: "🔒", title: "Шифрование AES-256", desc: "Военный уровень шифрования для каждого пакета данных." },
+      { icon: "🦎", title: "Шифрование AES-256", desc: "Военный уровень шифрования для каждого пакета данных." },
       { icon: "⚡", title: "Молниеносная скорость", desc: "Оптимизированные серверы по всему миру. Без задержек." },
       { icon: "🌍", title: "50+ локаций", desc: "Обходите географические ограничения и получайте доступ откуда угодно." },
       { icon: "🚫", title: "No-logs политика", desc: "Мы не храним и не передаём данные о вашей активности." },
@@ -76,6 +76,28 @@ function App() {
 
   const handleMouseMove = (e) => setCursorPos({ x: e.clientX, y: e.clientY })
 
+  // Анимация появления блоков при скролле
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible')
+          }
+        })
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      }
+    )
+
+    const fadeElements = document.querySelectorAll('.fade-in')
+    fadeElements.forEach((el) => observer.observe(el))
+
+    return () => observer.disconnect()
+  }, [lang])
+
   return (
     <div className={`app ${cursorVisible ? 'cursor-lizard' : ''}`} onMouseMove={handleMouseMove}>
       {/* Курсор-ящерица */}
@@ -87,11 +109,6 @@ function App() {
         </svg>
       </div>
 
-      {/* Частицы */}
-      <div className="particle" style={{ top: '10%', left: '10%' }}></div>
-      <div className="particle" style={{ top: '20%', left: '80%', animationDelay: '3s' }}></div>
-      <div className="particle" style={{ top: '60%', left: '15%', animationDelay: '6s' }}></div>
-
       {/* Header */}
       <header>
         <div className="header-inner">
@@ -102,7 +119,7 @@ function App() {
           <div className="header-right">
             <div className="theme-switcher">
               <button className={`theme-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>☀</button>
-              <button className={`theme-btn ${theme === 'moss' ? 'active' : ''}`} onClick={() => setTheme('moss')}>🌿</button>
+              <button className={`theme-btn ${theme === 'moss' ? 'active' : ''}`} onClick={() => setTheme('moss')}></button>
               <button className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>🌙</button>
             </div>
             <button className="account-btn" onMouseEnter={() => setCursorVisible(true)} onMouseLeave={() => setCursorVisible(false)}>
