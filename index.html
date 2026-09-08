@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIZARD CONNOR'S PIPES</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+        :root {
+            --moss-primary: #2F4538;
+            --moss-dark: #1F2F26;
+            --moss-deeper: #16211B;
+            --moss-light: #5A8A6E;
+            --moss-pale: #3A5A48;
+            --moss-bg: #2F4538;
+            --moss-text: #A8B5AC;
+            --moss-text-muted: #7A8A80;
+            --moss-text-bright: #D4DDD6;
+            --moss-card: rgba(31, 47, 38, 0.6);
+            --moss-border: rgba(90, 138, 110, 0.25);
+            --moss-glow: rgba(90, 138, 110, 0.5);
+            --moss-glow-strong: rgba(120, 180, 140, 0.8);
+            --transition-speed: 0.6s;
+            --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --moss-primary: #6B7B72;
+            --moss-dark: #4A5B52;
+            --moss-deeper: #3A4B42;
+            --moss-light: #8B9B92;
+            --moss-pale: #A8B8B0;
+            --moss-bg: #F5F5F3;
+            --moss-text: #2D2D2D;
+            --moss-text-muted: #5A5A5A;
+            --moss-text-bright: #1A1A1A;
+            --moss-card: rgba(107, 123, 114, 0.06);
+            --moss-border: rgba(107, 123, 114, 0.2);
+            --moss-glow: rgba(107, 123, 114, 0.3);
+            --moss-glow-strong: rgba(107, 123, 114, 0.5);
+        }
+
+        [data-theme="dark"] {
+            --moss-primary: #7A8B72;
+            --moss-dark: #1A1F18;
+            --moss-deeper: #0E120D;
+            --moss-light: #9AAB92;
+            --moss-pale: #3A4535;
+            --moss-bg: #121610;
+            --moss-text: #D4DDD0;
+            --moss-text-muted: #8A9A85;
+            --moss-text-bright: #E8F0E4;
+            --moss-card: rgba(122, 139, 114, 0.1);
+            --moss-border: rgba(122, 139, 114, 0.25);
+            --moss-glow: rgba(122, 139, 114, 0.4);
+            --moss-glow-strong: rgba(154, 171, 146, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--moss-bg);
+            color: var(--moss-text);
+            transition: background-color var(--transition-speed) var(--transition-smooth), 
+                        color var(--transition-speed) var(--transition-smooth);
+            overflow-x: hidden;
+            cursor: default;
+            min-height: 100vh;
+        }
+
+        /* Custom cursor for buttons */
+        .lizard-cursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            width: 32px;
+            height: 32px;
+            opacity: 0;
+            transition: opacity 0.3s var(--transition-smooth);
+            transform: translate(-50%, -50%);
+        }
+
+        .lizard-cursor.active {
+            opacity: 1;
+        }
+
+        .lizard-cursor svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        body.cursor-lizard {
+            cursor: none;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1.2rem 2rem;
+            background: rgba(47, 69, 56, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--moss-border);
+            transition: all var(--transition-speed) var(--transition-smooth);
+        }
+
+        [data-theme="light"] header {
+            background: rgba(245, 245, 243, 0.7);
+        }
+
+        [data-theme="dark"] header {
+            background: rgba(18, 22, 16, 0.7);
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            text-decoration: none;
+            color: var(--moss-text-bright);
+            transition: color var(--transition-speed);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--moss-dark);
+            border: 1px solid var(--moss-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-speed) var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-icon::after {
+            content: '?';
+            color: var(--moss-text-muted);
+            font-size: 1.2rem;
+            font-weight: 300;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: var(--moss-text-bright);
+            white-space: nowrap;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .theme-switcher {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: var(--moss-card);
+            border: 1px solid var(--moss-border);
+            border-radius: 30px;
+            padding: 0.3rem;
+            transition: all var(--transition-speed) var(--transition-smooth);
+        }
+
+        .theme-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s var(--transition-smooth);
+            background: transparent;
+            color: var(--moss-text-muted);
+            font-size: 0.9rem;
+        }
+
+        .theme-btn.active {
+            background: var(--moss-dark);
+            color: var(--moss-text-bright);
+            box-shadow: 0 0 15px var(--moss-glow), inset 0 0 10px rgba(90, 138, 110, 0.2);
+        }
+
+        .theme-btn:hover {
+            transform: scale(1.1);
+            color: var(--moss-text-bright);
+        }
+
+        .account-btn {
+            padding: 0.6rem 1.3rem;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.5s var(--transition-smooth);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid var(--moss-border);
+            cursor: pointer;
+            background: var(--moss-dark);
+            color: var(--moss-text);
+            white-space: nowrap;
+        }
+
+        .account-btn:hover {
+            background: var(--moss-deeper);
+            border-color: var(--moss-light);
+            color: var(--moss-text-bright);
+            box-shadow: 0 0 25px var(--moss-glow);
+            transform: translateY(-1px);
+        }
+
+        .account-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.04;
+            background-image: 
+                radial-gradient(circle at 20% 50%, var(--moss-light) 1px, transparent 1px),
+                radial-gradient(circle at 80% 20%, var(--moss-light) 1px, transparent 1px),
+                radial-gradient(circle at 60% 80%, var(--moss-light) 1px, transparent 1px);
+            background-size: 60px 60px, 80px 80px, 40px 40px;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            font-weight: 400;
+            font-style: italic;
+            line-height: 1.4;
+            margin-bottom: 3rem;
+            letter-spacing: -0.01em;
+            color: var(--moss-text-bright);
+            transition: color var(--transition-speed) var(--transition-smooth);
+        }
+
+        .hero h1 .quote-mark {
+            color: var(--moss-light);
+            font-size: 1.2em;
+            opacity: 0.6;
+        }
+
+        .lang-slogan {
+            display: inline-block;
+            transition: opacity 0.5s var(--transition-smooth);
+        }
+
+        .lang-slogan.fading {
+            opacity: 0;
+        }
+
+        .hero-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+        }
+
+        .btn {
+            padding: 1rem 2.2rem;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.6s var(--transition-smooth);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            border: 1px solid var(--moss-border);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            transition: transform 0.6s var(--transition-smooth);
+        }
+
+        .btn-primary {
+            background: var(--moss-deeper);
+            color: var(--moss-text-bright);
+            border-color: var(--moss-light);
+            box-shadow: 
+                0 0 20px var(--moss-glow),
+                0 0 40px rgba(90, 138, 110, 0.2),
+                inset 0 0 20px rgba(90, 138, 110, 0.1);
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(120, 180, 140, 0.2), transparent);
+            transition: left 0.8s var(--transition-smooth);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 
+                0 0 35px var(--moss-glow-strong),
+                0 0 70px var(--moss-glow),
+                inset 0 0 25px rgba(90, 138, 110, 0.2);
+            background: var(--moss-dark);
+            border-color: var(--moss-text-bright);
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover svg {
+            transform: scale(1.15) rotate(-5deg);
+        }
+
+        .btn-secondary {
+            background: var(--moss-deeper);
+            color: var(--moss-text);
+            border-color: var(--moss-border);
+            box-shadow: 
+                0 0 15px rgba(90, 138, 110, 0.15),
+                inset 0 0 15px rgba(90, 138, 110, 0.05);
+        }
+
+        .btn-secondary:hover {
+            background: var(--moss-dark);
+            color: var(--moss-text-bright);
+            border-color: var(--moss-light);
+            transform: translateY(-3px);
+            box-shadow: 
+                0 0 30px var(--moss-glow),
+                0 0 50px rgba(90, 138, 110, 0.25),
+                inset 0 0 20px rgba(90, 138, 110, 0.1);
+        }
+
+        .btn-secondary:hover svg {
+            transform: scale(1.15);
+        }
+
+        /* Language toggle */
+        .lang-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.2rem;
+            background: var(--moss-deeper);
+            border: 1px solid var(--moss-border);
+            border-radius: 30px;
+            color: var(--moss-text-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.5s var(--transition-smooth);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .lang-toggle:hover {
+            color: var(--moss-text-bright);
+            border-color: var(--moss-light);
+            box-shadow: 0 0 20px var(--moss-glow);
+        }
+
+        .lang-toggle .lang-divider {
+            opacity: 0.4;
+        }
+
+        .lang-toggle .lang-active {
+            color: var(--moss-text-bright);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+            color: var(--moss-text-bright);
+        }
+
+        .section-header p {
+            font-size: 1.1rem;
+            color: var(--moss-text-muted);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            padding: 2.5rem;
+            background: var(--moss-card);
+            border: 1px solid var(--moss-border);
+            border-radius: 20px;
+            transition: all 0.6s var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--moss-light), transparent);
+            opacity: 0;
+            transition: opacity 0.6s var(--transition-smooth);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--moss-light);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.2),
+                0 0 30px var(--moss-glow);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--moss-deeper);
+            border: 1px solid var(--moss-border);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            transition: all 0.6s var(--transition-smooth);
+        }
+
+        .feature-card:hover .feature-icon {
+            box-shadow: 0 0 20px var(--moss-glow);
+            border-color: var(--moss-light);
+        }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: var(--moss-text-bright);
+        }
+
+        .feature-card p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--moss-text-muted);
+        }
+
+        /* Telegram Section */
+        .telegram-section {
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .telegram-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 4rem 3rem;
+            background: var(--moss-card);
+            border: 1px solid var(--moss-border);
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+            transition: all var(--transition-speed) var(--transition-smooth);
+        }
+
+        .telegram-container::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--moss-light) 0%, transparent 70%);
+            opacity: 0.05;
+            animation: rotate 25s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .telegram-container h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+            color: var(--moss-text-bright);
+        }
+
+        .telegram-container p {
+            color: var(--moss-text-muted);
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .telegram-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .telegram-btn {
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.6s var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            border: 1px solid var(--moss-border);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .telegram-btn.primary {
+            background: var(--moss-deeper);
+            color: var(--moss-text-bright);
+            border-color: var(--moss-light);
+            box-shadow: 
+                0 0 20px var(--moss-glow),
+                inset 0 0 15px rgba(90, 138, 110, 0.1);
+        }
+
+        .telegram-btn.secondary {
+            background: var(--moss-deeper);
+            color: var(--moss-text);
+            box-shadow: 
+                0 0 15px rgba(90, 138, 110, 0.15),
+                inset 0 0 10px rgba(90, 138, 110, 0.05);
+        }
+
+        .telegram-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 
+                0 0 35px var(--moss-glow-strong),
+                0 0 60px var(--moss-glow),
+                inset 0 0 20px rgba(90, 138, 110, 0.15);
+            border-color: var(--moss-text-bright);
+        }
+
+        /* Account Section */
+        .account-section {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .account-card {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 3rem;
+            background: var(--moss-card);
+            border: 1px solid var(--moss-border);
+            border-radius: 24px;
+            transition: all var(--transition-speed) var(--transition-smooth);
+        }
+
+        .account-card h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.8rem;
+            color: var(--moss-text-bright);
+        }
+
+        .account-card p {
+            color: var(--moss-text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            text-align: center;
+            border-top: 1px solid var(--moss-border);
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: var(--moss-text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Scroll animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1s var(--transition-smooth);
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Ambient particles */
+        .particle {
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            background: var(--moss-light);
+            border-radius: 50%;
+            opacity: 0.15;
+            pointer-events: none;
+            animation: float 18s infinite ease-in-out;
+            box-shadow: 0 0 8px var(--moss-glow);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            25% { transform: translateY(-100px) translateX(50px); }
+            50% { transform: translateY(-50px) translateX(-30px); }
+            75% { transform: translateY(-150px) translateX(20px); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem;
+            }
+
+            .logo-text {
+                font-size: 0.9rem;
+            }
+
+            .account-btn span {
+                display: none;
+            }
+
+            .account-btn {
+                padding: 0.6rem;
+                width: 38px;
+                height: 38px;
+                justify-content: center;
+            }
+
+            .hero {
+                padding: 7rem 1.5rem 3rem;
+            }
+
+            .hero h1 {
+                font-size: 1.5rem;
+                margin-bottom: 2.5rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-card {
+                padding: 2rem;
+            }
+
+            .telegram-container {
+                padding: 2.5rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo-text {
+                font-size: 0.8rem;
+                letter-spacing: 0.02em;
+            }
+
+            .theme-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body data-theme="moss">
+
+    <!-- Custom Lizard Cursor -->
+    <div class="lizard-cursor" id="lizardCursor">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M48 16C50 14 52 14 54 16C56 18 56 20 54 22C52 24 50 24 48 22C46 20 46 18 48 16Z" fill="#5A8A6E"/>
+            <path d="M44 20C42 18 38 16 34 18C30 20 28 24 26 28C24 32 22 36 20 38C18 40 16 42 14 42C12 42 10 40 10 38C10 36 12 34 14 34C16 34 18 36 18 38" stroke="#5A8A6E" stroke-width="2" stroke-linecap="round"/>
+            <path d="M34 18C36 16 40 16 42 18C44 20 44 22 42 24" stroke="#5A8A6E" stroke-width="2" stroke-linecap="round"/>
+            <path d="M26 28C24 30 22 30 20 28" stroke="#5A8A6E" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M20 38C18 40 16 42 14 44C12 46 10 46 8 44" stroke="#5A8A6E" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="50" cy="18" r="1.5" fill="white"/>
+        </svg>
+    </div>
+
+    <!-- Ambient Particles -->
+    <div class="particle" style="top: 10%; left: 10%; animation-delay: 0s;"></div>
+    <div class="particle" style="top: 20%; left: 80%; animation-delay: 3s;"></div>
+    <div class="particle" style="top: 60%; left: 15%; animation-delay: 6s;"></div>
+    <div class="particle" style="top: 80%; left: 70%; animation-delay: 9s;"></div>
+    <div class="particle" style="top: 40%; left: 90%; animation-delay: 12s;"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="header-inner">
+            <a href="#" class="logo">
+                <div class="logo-icon"></div>
+                <span class="logo-text">LIZARD CONNOR'S PIPES</span>
+            </a>
+
+            <div class="header-right">
+                <div class="theme-switcher">
+                    <button class="theme-btn" data-theme="light" title="Light">☀</button>
+                    <button class="theme-btn active" data-theme="moss" title="Moss">🌿</button>
+                    <button class="theme-btn" data-theme="dark" title="Dark">🌙</button>
+                </div>
+
+                <button class="account-btn" id="accountBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Account</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg-pattern"></div>
+        <div class="hero-content">
+            <h1>
+                <span class="quote-mark">"</span><span class="lang-slogan" id="langSlogan">We are no longer talking about treating diseases here. We are talking about the pursuit of perfection!</span><span class="quote-mark">"</span>
+            </h1>
+            <div class="hero-buttons">
+                <a href="#" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/>
+                    </svg>
+                    Connect
+                </a>
+                <a href="#" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                    </svg>
+                    Learn more on Telegram
+                </a>
+            </div>
+            <button class="lang-toggle" id="langToggle">
+                <span id="langEn" class="lang-active">EN</span>
+                <span class="lang-divider">/</span>
+                <span id="langRu">RU</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="section-header fade-in">
+            <h2>Why Lizard Connor's Pipes</h2>
+            <p>Technologies that work for you while you focus on what matters</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🔒</div>
+                <h3>AES-256 Encryption</h3>
+                <p>Military-grade encryption for every data packet. Your information stays yours.</p>
+            </div>
+
+            <div class="feature-card fade-in">
+                <div class="feature-icon">⚡</div>
+                <h3>Lightning Speed</h3>
+                <p>Optimized servers worldwide. Streaming, gaming, downloads — no lag, no buffering.</p>
+            </div>
+
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🌍</div>
+                <h3>50+ Locations</h3>
+                <p>Servers in 50+ countries. Bypass geo-restrictions and access content from anywhere.</p>
+            </div>
+
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🚫</div>
+                <h3>No-logs Policy</h3>
+                <p>We don't store or share data about your activity. Full anonymity guaranteed.</p>
+            </div>
+
+            <div class="feature-card fade-in">
+                <div class="feature-icon">📱</div>
+                <h3>All Platforms</h3>
+                <p>Windows, macOS, iOS, Android, Linux. One app — all your devices protected.</p>
+            </div>
+
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🦎</div>
+                <h3>Adaptive Protocol</h3>
+                <p>Smart switching between protocols for maximum stability on any network.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Telegram Section -->
+    <section class="telegram-section" id="telegram">
+        <div class="telegram-container fade-in">
+            <h2>Join Us</h2>
+            <p>Stay updated, get promo codes, and connect with the community</p>
+            <div class="telegram-buttons">
+                <button class="telegram-btn primary">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                    Telegram Channel
+                </button>
+                <button class="telegram-btn secondary">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                    Telegram Chat
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Account Section -->
+    <section class="account-section" id="account">
+        <div class="account-card fade-in">
+            <h3>Personal Account</h3>
+            <p>Manage your subscription, devices, and security settings in one place</p>
+            <button class="btn btn-secondary" style="width: 100%; justify-content: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Sign In
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2024 Lizard Connor's Pipes. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Translations
+        const translations = {
+            en: {
+                slogan: "We are no longer talking about treating diseases here. We are talking about the pursuit of perfection!",
+                connect: "Connect",
+                telegram: "Learn more on Telegram",
+                featuresTitle: "Why Lizard Connor's Pipes",
+                featuresSubtitle: "Technologies that work for you while you focus on what matters",
+                accountBtn: "Account",
+                joinUs: "Join Us",
+                joinSubtitle: "Stay updated, get promo codes, and connect with the community",
+                channel: "Telegram Channel",
+                chat: "Telegram Chat",
+                personalAccount: "Personal Account",
+                accountDesc: "Manage your subscription, devices, and security settings in one place",
+                signIn: "Sign In",
+                footer: "© 2024 Lizard Connor's Pipes. All rights reserved."
+            },
+            ru: {
+                slogan: "Мы здесь больше не говорим о лечении болезней. Мы говорим о стремлении к совершенству!",
+                connect: "Подключить",
+                telegram: "Узнать больше в Telegram",
+                featuresTitle: "Почему Lizard Connor's Pipes",
+                featuresSubtitle: "Технологии, которые работают на вас, пока вы занимаетесь своими делами",
+                accountBtn: "Кабинет",
+                joinUs: "Присоединяйтесь",
+                joinSubtitle: "Будьте в курсе обновлений, получайте промокоды и общайтесь с сообществом",
+                channel: "Telegram канал",
+                chat: "Telegram чат",
+                personalAccount: "Личный кабинет",
+                accountDesc: "Управляйте подпиской, устройствами и настройками безопасности в одном месте",
+                signIn: "Войти",
+                footer: "© 2024 Lizard Connor's Pipes. Все права защищены."
+            }
+        };
+
+        let currentLang = 'en';
+
+        // Theme switching
+        const themeBtns = document.querySelectorAll('.theme-btn');
+        const body = document.body;
+
+        themeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                themeBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const theme = btn.dataset.theme;
+                body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            });
+        });
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            body.setAttribute('data-theme', savedTheme);
+            themeBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === savedTheme);
+            });
+        }
+
+        // Language toggle
+        const langToggle = document.getElementById('langToggle');
+        const langSlogan = document.getElementById('langSlogan');
+        const langEn = document.getElementById('langEn');
+        const langRu = document.getElementById('langRu');
+
+        function updateLanguage(lang) {
+            const t = translations[lang];
+            
+            // Fade out
+            langSlogan.classList.add('fading');
+            
+            setTimeout(() => {
+                langSlogan.textContent = t.slogan;
+                langSlogan.classList.remove('fading');
+            }, 400);
+
+            // Update button text
+            document.querySelector('.btn-primary').childNodes[2].textContent = ' ' + t.connect;
+            document.querySelector('.btn-secondary').childNodes[2].textContent = ' ' + t.telegram;
+            
+            // Update header account button
+            const accountBtnSpan = document.querySelector('.account-btn span');
+            if (accountBtnSpan) accountBtnSpan.textContent = t.accountBtn;
+
+            // Update features section
+            document.querySelector('.section-header h2').textContent = t.featuresTitle;
+            document.querySelector('.section-header p').textContent = t.featuresSubtitle;
+
+            // Update telegram section
+            document.querySelector('.telegram-container h2').textContent = t.joinUs;
+            document.querySelector('.telegram-container > p').textContent = t.joinSubtitle;
+            document.querySelector('.telegram-btn.primary').childNodes[1].textContent = ' ' + t.channel;
+            document.querySelector('.telegram-btn.secondary').childNodes[1].textContent = ' ' + t.chat;
+
+            // Update account section
+            document.querySelector('.account-card h3').textContent = t.personalAccount;
+            document.querySelector('.account-card p').textContent = t.accountDesc;
+            document.querySelector('.account-card .btn span') || 
+                (document.querySelector('.account-card .btn').lastChild.textContent = ' ' + t.signIn);
+
+            // Update footer
+            document.querySelector('footer p').textContent = t.footer;
+
+            // Update active lang indicator
+            if (lang === 'en') {
+                langEn.classList.add('lang-active');
+                langRu.classList.remove('lang-active');
+            } else {
+                langRu.classList.add('lang-active');
+                langEn.classList.remove('lang-active');
+            }
+
+            document.documentElement.lang = lang;
+        }
+
+        langToggle.addEventListener('click', () => {
+            currentLang = currentLang === 'en' ? 'ru' : 'en';
+            updateLanguage(currentLang);
+        });
+
+        // Custom lizard cursor for buttons
+        const lizardCursor = document.getElementById('lizardCursor');
+        const buttons = document.querySelectorAll('.btn, .telegram-btn, .theme-btn, .feature-card, .account-btn, .lang-toggle');
+
+        buttons.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                lizardCursor.classList.add('active');
+                body.classList.add('cursor-lizard');
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                lizardCursor.classList.remove('active');
+                body.classList.remove('cursor-lizard');
+            });
+
+            btn.addEventListener('mousemove', (e) => {
+                lizardCursor.style.left = e.clientX + 'px';
+                lizardCursor.style.top = e.clientY + 'px';
+            });
+        });
+
+        // Fade-in animations on scroll
+        const fadeElements = document.querySelectorAll('.fade-in');
+
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        fadeElements.forEach(el => observer.observe(el));
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
