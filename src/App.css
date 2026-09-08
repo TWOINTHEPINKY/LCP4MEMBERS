@@ -31,11 +31,11 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1.2
 [data-theme="light"] header { background: rgba(241, 248, 233, 0.85); }
 [data-theme="dark"] header { background: rgba(10, 31, 13, 0.85); }
 .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
-.logo { display: flex; align-items: center; gap: 0.8rem; text-decoration: none; color: var(--moss-text-bright); font-family: 'Mynerve', cursive; }
+.logo { display: flex; align-items: center; gap: 0.8rem; text-decoration: none; color: var(--moss-text-bright); }
 .logo-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--moss-dark); border: 1px solid var(--moss-border); display: flex; align-items: center; justify-content: center; transition: all 0.3s var(--transition-smooth); }
 .logo-icon::after { content: '?'; color: var(--moss-text-muted); font-size: 1.2rem; font-weight: 300; }
 .logo:hover .logo-icon { box-shadow: 0 0 20px var(--moss-glow); transform: scale(1.1); }
-.logo-text { font-family: 'Mynerve', cursive; font-size: 1.4rem; font-weight: 400; letter-spacing: 0.05em; color: var(--moss-text-bright); white-space: nowrap; }
+.logo-text { font-family: 'Cormorant Unicase', serif; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.08em; color: var(--moss-text-bright); white-space: nowrap; }
 .header-right { display: flex; align-items: center; gap: 1rem; }
 .theme-switcher { display: flex; align-items: center; gap: 0.3rem; background: var(--moss-card); border: 1px solid var(--moss-border); border-radius: 30px; padding: 0.3rem; }
 .theme-btn { width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.5s var(--transition-smooth); background: transparent; color: var(--moss-text-muted); font-size: 0.9rem; }
@@ -49,23 +49,25 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1.2
 .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 8rem 2rem 4rem; position: relative; overflow: visible; }
 .hero-bg-pattern { position: absolute; inset: 0; opacity: 0.04; background-image: radial-gradient(circle at 20% 50%, var(--moss-light) 1px, transparent 1px), radial-gradient(circle at 80% 20%, var(--moss-light) 1px, transparent 1px); background-size: 60px 60px, 80px 80px; }
 .hero-content { max-width: 900px; text-align: center; position: relative; z-index: 2; padding: 2rem 0; }
-.hero h1 { font-family: 'Mynerve', cursive; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 400; font-style: normal; line-height: 1.4; margin-bottom: 3rem; color: var(--moss-text-bright); }
+.hero h1 { font-family: 'Cormorant Unicase', serif; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 500; font-style: normal; line-height: 1.4; margin-bottom: 3rem; color: var(--moss-text-bright); }
 .quote-mark { color: var(--moss-light); font-size: 1.2em; opacity: 0.6; }
 .lang-slogan { display: inline-block; transition: opacity 0.5s var(--transition-smooth); }
 .lang-slogan.fading { opacity: 0; }
 .hero-buttons { display: flex; align-items: center; justify-content: center; gap: 1.2rem; flex-wrap: wrap; margin-bottom: 2rem; position: relative; z-index: 10; }
-.btn { padding: 1rem 2.2rem; border-radius: 50px; font-size: 0.95rem; font-weight: 500; text-decoration: none; transition: all 0.6s var(--transition-smooth); display: inline-flex; align-items: center; gap: 0.6rem; border: 1px solid var(--moss-border); cursor: pointer; position: relative; z-index: 10; overflow: visible; white-space: nowrap; }
-.btn svg { width: 18px; height: 18px; transition: transform 0.6s var(--transition-smooth); }
+.btn { padding: 1.1rem 2.4rem; border-radius: 50px; font-size: 0.95rem; font-weight: 500; text-decoration: none; transition: all 0.5s var(--transition-smooth); display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; border: 1px solid var(--moss-border); cursor: pointer; position: relative; z-index: 10; overflow: hidden; white-space: nowrap; min-width: 180px; }
+.btn svg { width: 18px; height: 18px; transition: transform 0.5s var(--transition-smooth); flex-shrink: 0; }
 .btn-primary { background: var(--moss-deeper); color: var(--moss-text-bright); border-color: var(--moss-light); box-shadow: 0 0 20px var(--moss-glow), inset 0 0 20px rgba(76, 175, 80, 0.1); }
-.btn-primary::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(100, 200, 100, 0.2), transparent); transition: left 0.8s var(--transition-smooth); z-index: -1; }
-.btn-primary:hover { transform: translateY(-3px); box-shadow: 0 0 35px var(--moss-glow-strong), 0 0 70px var(--moss-glow); background: var(--moss-dark); border-color: var(--moss-text-bright); }
+.btn-primary::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(100, 200, 100, 0.25), transparent); transition: left 0.7s var(--transition-smooth); z-index: -1; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px var(--moss-glow-strong), 0 0 60px var(--moss-glow); background: var(--moss-dark); border-color: var(--moss-text-bright); }
 .btn-primary:hover::before { left: 100%; }
-.btn-primary:hover svg { transform: scale(1.15) rotate(-5deg); }
+.btn-primary:hover svg { transform: scale(1.1) rotate(-5deg); }
 .btn-secondary { background: var(--moss-deeper); color: var(--moss-text); box-shadow: 0 0 15px rgba(76, 175, 80, 0.15); }
-.btn-secondary:hover { background: var(--moss-dark); color: var(--moss-text-bright); border-color: var(--moss-light); transform: translateY(-3px); box-shadow: 0 0 30px var(--moss-glow); }
-.btn-secondary:hover svg { transform: scale(1.15); }
-.lang-toggle { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.4rem; background: var(--moss-deeper); border: 1px solid var(--moss-border); border-radius: 30px; color: var(--moss-text-muted); font-size: 0.85rem; font-weight: 500; letter-spacing: 0.1em; cursor: pointer; transition: all 0.5s var(--transition-smooth); font-family: 'Gloria Hallelujah', cursive; min-width: 120px; justify-content: center; margin-bottom: 1rem; }
-.lang-toggle:hover { color: var(--moss-text-bright); border-color: var(--moss-light); box-shadow: 0 0 20px var(--moss-glow); }
+.btn-secondary:hover { background: var(--moss-dark); color: var(--moss-text-bright); border-color: var(--moss-light); transform: translateY(-2px); box-shadow: 0 0 25px var(--moss-glow); }
+.btn-secondary:hover svg { transform: scale(1.1); }
+.lang-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1.1rem 1.8rem; background: var(--moss-deeper); border: 1px solid var(--moss-border); border-radius: 50px; color: var(--moss-text-muted); font-size: 0.9rem; font-weight: 500; letter-spacing: 0.1em; cursor: pointer; transition: all 0.5s var(--transition-smooth); font-family: 'Gloria Hallelujah', cursive; min-width: 130px; white-space: nowrap; overflow: hidden; position: relative; }
+.lang-toggle:hover { color: var(--moss-text-bright); border-color: var(--moss-light); box-shadow: 0 0 20px var(--moss-glow); transform: translateY(-2px); }
+.lang-toggle::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(100, 200, 100, 0.2), transparent); transition: left 0.7s var(--transition-smooth); z-index: -1; }
+.lang-toggle:hover::before { left: 100%; }
 .lang-divider { opacity: 0.4; }
 .lang-active { color: var(--moss-text-bright); }
 
@@ -132,7 +134,7 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   .hero { padding: 7rem 1.5rem 3rem; }
   .hero h1 { font-size: 1.8rem; margin-bottom: 2.5rem; }
   .hero-buttons { flex-direction: column; width: 100%; }
-  .btn { width: 100%; justify-content: center; }
+  .btn { width: 100%; justify-content: center; min-width: unset; }
   .features-grid { grid-template-columns: 1fr; }
   .feature-card { padding: 2rem; }
   .scroll-to-top {

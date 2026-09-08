@@ -10,9 +10,9 @@ const translations = {
     accountBtn: "Account",
     footer: "© 2026 Lizard Connor's Pipes. All rights reserved.",
     features: [
-      { icon: "", title: "AES-256 Encryption", desc: "Military-grade encryption for every data packet." },
+      { icon: "🔒", title: "AES-256 Encryption", desc: "Military-grade encryption for every data packet." },
       { icon: "⚡", title: "Lightning Speed", desc: "Optimized servers worldwide. No lag, no buffering." },
-      { icon: "🌍", title: "50+ Locations", desc: "Bypass geo-restrictions and access content from anywhere." },
+      { icon: "", title: "50+ Locations", desc: "Bypass geo-restrictions and access content from anywhere." },
       { icon: "🚫", title: "No-logs Policy", desc: "We don't store or share data about your activity." },
       { icon: "📱", title: "All Platforms", desc: "Windows, macOS, iOS, Android, Linux. One app." },
       { icon: "🦎", title: "Adaptive Protocol", desc: "Smart switching between protocols for max stability." }
@@ -27,7 +27,7 @@ const translations = {
     footer: "© 2026 Lizard Connor's Pipes. Все права защищены.",
     features: [
       { icon: "🔒", title: "Шифрование AES-256", desc: "Военный уровень шифрования для каждого пакета данных." },
-      { icon: "⚡", title: "Молниеносная скорость", desc: "Оптимизированные серверы по всему миру. Без задержек." },
+      { icon: "", title: "Молниеносная скорость", desc: "Оптимизированные серверы по всему миру. Без задержек." },
       { icon: "🌍", title: "50+ локаций", desc: "Обходите географические ограничения и получайте доступ откуда угодно." },
       { icon: "🚫", title: "No-logs политика", desc: "Мы не храним и не передаём данные о вашей активности." },
       { icon: "📱", title: "Все платформы", desc: "Windows, macOS, iOS, Android, Linux. Одно приложение." },
@@ -39,45 +39,34 @@ const translations = {
 // Matrix Rain Component
 const MatrixRain = () => {
   const [columns, setColumns] = useState([])
-  const [isScrolling, setIsScrolling] = useState(false)
 
   useEffect(() => {
-    // Generate random matrix columns
-    const cols = []
-    const columnCount = Math.floor(window.innerWidth / 20)
-    
-    for (let i = 0; i < columnCount; i++) {
-      const length = Math.floor(Math.random() * 15) + 10
-      let chars = ''
-      for (let j = 0; j < length; j++) {
-        chars += Math.random() > 0.5 ? '1' : '0'
+    const generateColumns = () => {
+      const cols = []
+      const columnCount = Math.floor(window.innerWidth / 12)
+      
+      for (let i = 0; i < columnCount; i++) {
+        const length = Math.floor(Math.random() * 25) + 15
+        let chars = ''
+        for (let j = 0; j < length; j++) {
+          chars += Math.random() > 0.5 ? '1' : '0'
+        }
+        cols.push({
+          id: `${i}-${Date.now()}`,
+          chars,
+          left: `${(i * 12) + Math.random() * 6}px`,
+          delay: `${Math.random() * 15}s`,
+          duration: `${4 + Math.random() * 8}s`
+        })
       }
-      cols.push({
-        id: i,
-        chars,
-        left: `${i * 20}px`,
-        delay: `${Math.random() * 10}s`,
-        duration: `${3 + Math.random() * 5}s`
-      })
+      setColumns(cols)
     }
-    setColumns(cols)
 
-    // Scroll detection
-    let scrollTimeout
-    const handleScroll = () => {
-      setIsScrolling(true)
-      clearTimeout(scrollTimeout)
-      scrollTimeout = setTimeout(() => setIsScrolling(false), 150)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      clearTimeout(scrollTimeout)
-    }
+    generateColumns()
   }, [])
 
   return (
-    <div className={`matrix-rain ${isScrolling ? 'scrolling' : ''}`}>
+    <div className="matrix-rain">
       {columns.map((col) => (
         <div
           key={col.id}
@@ -96,7 +85,7 @@ const MatrixRain = () => {
 }
 
 function App() {
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'moss')
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
   const [lang, setLang] = useState('en')
   const [fading, setFading] = useState(false)
 
@@ -156,8 +145,7 @@ function App() {
           <div className="header-right">
             <div className="theme-switcher">
               <button className={`theme-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>☀</button>
-              <button className={`theme-btn ${theme === 'moss' ? 'active' : ''}`} onClick={() => setTheme('moss')}></button>
-              <button className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}></button>
+              <button className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>🌙</button>
             </div>
             <button className="account-btn">
               <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -181,12 +169,12 @@ function App() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
               {t.connect}
             </a>
+            <button className="btn btn-secondary lang-toggle" onClick={toggleLanguage}>
+              <span className={lang === 'en' ? 'lang-active' : ''}>EN</span>
+              <span className="lang-divider">/</span>
+              <span className={lang === 'ru' ? 'lang-active' : ''}>RU</span>
+            </button>
           </div>
-          <button className="lang-toggle" onClick={toggleLanguage}>
-            <span className={lang === 'en' ? 'lang-active' : ''}>EN</span>
-            <span className="lang-divider">/</span>
-            <span className={lang === 'ru' ? 'lang-active' : ''}>RU</span>
-          </button>
         </div>
       </section>
 

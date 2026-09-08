@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&family=Mynerve&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Unicase:wght@300;400;500;600;700&family=Gloria+Hallelujah&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   --moss-primary: #317F43;
@@ -80,40 +80,31 @@ body {
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
-  opacity: 0.3;
 }
 
 .matrix-column {
   position: absolute;
-  top: -100px;
+  top: -120%;
   font-family: 'Courier New', monospace;
-  font-size: 14px;
-  color: #009900;
+  font-size: 13px;
+  color: #006400;
   writing-mode: vertical-rl;
-  text-orientation: mixed;
+  text-orientation: upright;
   white-space: nowrap;
+  letter-spacing: 4px;
   animation: matrix-fall linear infinite;
-  text-shadow: 0 0 5px #009900;
+  text-shadow: 
+    0 0 6px #00ff00,
+    0 0 12px #00cc00,
+    0 0 20px #009900;
+  opacity: 0.55;
 }
 
 @keyframes matrix-fall {
   0% {
-    transform: translateY(-100vh);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.3;
-  }
-  90% {
-    opacity: 0.3;
+    transform: translateY(0);
   }
   100% {
-    transform: translateY(100vh);
-    opacity: 0;
+    transform: translateY(220vh);
   }
-}
-
-.matrix-rain.scrolling .matrix-column {
-  animation-duration: 0.5s;
-  animation-direction: reverse;
 }
