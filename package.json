@@ -3,11 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite --open",
-    "build": "vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+"scripts": {
+  "dev": "vite --open",
+  "build": "npx vite build",
+  "lint": "oxlint",
+  "preview": "npx vite preview"
   },
   "dependencies": {
     "react": "^19.2.8",
