@@ -1,57 +1,55 @@
-/* 1. Шрифты и переменные тем */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&family=Mynerve&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --moss-primary: #2F4538;
-  --moss-dark: #1F2F26;
-  --moss-deeper: #16211B;
-  --moss-light: #5A8A6E;
+  --moss-primary: #317F43;
+  --moss-dark: #245932;
+  --moss-deeper: #1a4226;
+  --moss-light: #4CAF50;
   --moss-pale: #3A5A48;
-  --moss-bg: #2F4538;
-  --moss-text: #A8B5AC;
-  --moss-text-muted: #7A8A80;
-  --moss-text-bright: #D4DDD6;
-  --moss-card: rgba(31, 47, 38, 0.6);
-  --moss-border: rgba(90, 138, 110, 0.25);
-  --moss-glow: rgba(90, 138, 110, 0.5);
-  --moss-glow-strong: rgba(120, 180, 140, 0.8);
+  --moss-bg: #317F43;
+  --moss-text: #E8F5E9;
+  --moss-text-muted: #C8E6C9;
+  --moss-text-bright: #FFFFFF;
+  --moss-card: rgba(36, 89, 50, 0.6);
+  --moss-border: rgba(76, 175, 80, 0.3);
+  --moss-glow: rgba(76, 175, 80, 0.5);
+  --moss-glow-strong: rgba(100, 200, 100, 0.8);
   --transition-speed: 0.6s;
   --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="light"] {
-  --moss-primary: #6B7B72;
-  --moss-dark: #4A5B52;
-  --moss-deeper: #3A4B42;
-  --moss-light: #8B9B92;
-  --moss-pale: #A8B8B0;
-  --moss-bg: #F5F5F3;
-  --moss-text: #2D2D2D;
-  --moss-text-muted: #5A5A5A;
-  --moss-text-bright: #1A1A1A;
-  --moss-card: rgba(107, 123, 114, 0.06);
-  --moss-border: rgba(107, 123, 114, 0.2);
-  --moss-glow: rgba(107, 123, 114, 0.3);
-  --moss-glow-strong: rgba(107, 123, 114, 0.5);
+  --moss-primary: #E8F5E9;
+  --moss-dark: #C8E6C9;
+  --moss-deeper: #A5D6A7;
+  --moss-light: #81C784;
+  --moss-pale: #A5D6A7;
+  --moss-bg: #F1F8E9;
+  --moss-text: #1B5E20;
+  --moss-text-muted: #2E7D32;
+  --moss-text-bright: #0D3B15;
+  --moss-card: rgba(129, 199, 132, 0.15);
+  --moss-border: rgba(76, 175, 80, 0.3);
+  --moss-glow: rgba(76, 175, 80, 0.3);
+  --moss-glow-strong: rgba(76, 175, 80, 0.5);
 }
 
 [data-theme="dark"] {
-  --moss-primary: #7A8B72;
-  --moss-dark: #1A1F18;
-  --moss-deeper: #0E120D;
-  --moss-light: #9AAB92;
-  --moss-pale: #3A4535;
-  --moss-bg: #121610;
-  --moss-text: #D4DDD0;
-  --moss-text-muted: #8A9A85;
-  --moss-text-bright: #E8F0E4;
-  --moss-card: rgba(122, 139, 114, 0.1);
-  --moss-border: rgba(122, 139, 114, 0.25);
-  --moss-glow: rgba(122, 139, 114, 0.4);
-  --moss-glow-strong: rgba(154, 171, 146, 0.7);
+  --moss-primary: #1B5E20;
+  --moss-dark: #0D3B15;
+  --moss-deeper: #05240A;
+  --moss-light: #2E7D32;
+  --moss-pale: #1B3A20;
+  --moss-bg: #0A1F0D;
+  --moss-text: #C8E6C9;
+  --moss-text-muted: #81C784;
+  --moss-text-bright: #E8F5E9;
+  --moss-card: rgba(46, 125, 50, 0.2);
+  --moss-border: rgba(76, 175, 80, 0.3);
+  --moss-glow: rgba(76, 175, 80, 0.4);
+  --moss-glow-strong: rgba(100, 200, 100, 0.6);
 }
 
-/* 2. Базовые сбросы и стили body */
 * {
   margin: 0;
   padding: 0;
@@ -63,11 +61,59 @@ html {
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Gloria Hallelujah', cursive;
   background-color: var(--moss-bg);
   color: var(--moss-text);
   transition: background-color var(--transition-speed) var(--transition-smooth), 
               color var(--transition-speed) var(--transition-smooth);
   overflow-x: hidden;
   min-height: 100vh;
+}
+
+/* Matrix Rain Background */
+.matrix-rain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  opacity: 0.3;
+}
+
+.matrix-column {
+  position: absolute;
+  top: -100px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #009900;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+  animation: matrix-fall linear infinite;
+  text-shadow: 0 0 5px #009900;
+}
+
+@keyframes matrix-fall {
+  0% {
+    transform: translateY(-100vh);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.3;
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+.matrix-rain.scrolling .matrix-column {
+  animation-duration: 0.5s;
+  animation-direction: reverse;
 }
