@@ -1,0 +1,73 @@
+/* 1. Шрифты и переменные тем */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --moss-primary: #2F4538;
+  --moss-dark: #1F2F26;
+  --moss-deeper: #16211B;
+  --moss-light: #5A8A6E;
+  --moss-pale: #3A5A48;
+  --moss-bg: #2F4538;
+  --moss-text: #A8B5AC;
+  --moss-text-muted: #7A8A80;
+  --moss-text-bright: #D4DDD6;
+  --moss-card: rgba(31, 47, 38, 0.6);
+  --moss-border: rgba(90, 138, 110, 0.25);
+  --moss-glow: rgba(90, 138, 110, 0.5);
+  --moss-glow-strong: rgba(120, 180, 140, 0.8);
+  --transition-speed: 0.6s;
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] {
+  --moss-primary: #6B7B72;
+  --moss-dark: #4A5B52;
+  --moss-deeper: #3A4B42;
+  --moss-light: #8B9B92;
+  --moss-pale: #A8B8B0;
+  --moss-bg: #F5F5F3;
+  --moss-text: #2D2D2D;
+  --moss-text-muted: #5A5A5A;
+  --moss-text-bright: #1A1A1A;
+  --moss-card: rgba(107, 123, 114, 0.06);
+  --moss-border: rgba(107, 123, 114, 0.2);
+  --moss-glow: rgba(107, 123, 114, 0.3);
+  --moss-glow-strong: rgba(107, 123, 114, 0.5);
+}
+
+[data-theme="dark"] {
+  --moss-primary: #7A8B72;
+  --moss-dark: #1A1F18;
+  --moss-deeper: #0E120D;
+  --moss-light: #9AAB92;
+  --moss-pale: #3A4535;
+  --moss-bg: #121610;
+  --moss-text: #D4DDD0;
+  --moss-text-muted: #8A9A85;
+  --moss-text-bright: #E8F0E4;
+  --moss-card: rgba(122, 139, 114, 0.1);
+  --moss-border: rgba(122, 139, 114, 0.25);
+  --moss-glow: rgba(122, 139, 114, 0.4);
+  --moss-glow-strong: rgba(154, 171, 146, 0.7);
+}
+
+/* 2. Базовые сбросы и стили body */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--moss-bg);
+  color: var(--moss-text);
+  transition: background-color var(--transition-speed) var(--transition-smooth), 
+              color var(--transition-speed) var(--transition-smooth);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
