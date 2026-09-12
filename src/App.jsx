@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 
 // Импорт SVG как React-компонентов
@@ -110,10 +110,39 @@ const MatrixRain = () => {
   )
 }
 
+// Green Particles Component
+const GreenParticles = ({ particles, onRemove }) => {
+  useEffect(() => {
+    if (particles.length === 0) return
+    const timer = setTimeout(() => onRemove(), 2000)
+    return () => clearTimeout(timer)
+  }, [particles, onRemove])
+
+  return (
+    <>
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="green-particle"
+          style={{
+            left: p.startX,
+            top: p.startY,
+            '--end-x': `${p.endX}px`,
+            '--end-y': `${p.endY}px`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
 function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
   const [lang, setLang] = useState('en')
   const [fading, setFading] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const [particles, setParticles] = useState([])
 
   const t = translations[lang]
 
@@ -121,6 +150,15 @@ function App() {
     document.body.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  // Scroll handler for arrow visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const toggleLanguage = () => {
     setFading(true)
@@ -133,6 +171,30 @@ function App() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  // Green particles on logo click
+  const handleLogoClick = useCallback((e) => {
+    e.preventDefault()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+
+    const newParticles = Array.from({ length: 20 }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / 20
+      const distance = 800 + Math.random() * 400
+      return {
+        id: `${Date.now()}-${i}`,
+        startX: centerX,
+        startY: centerY,
+        endX: centerX + Math.cos(angle) * distance,
+        endY: centerY + Math.sin(angle) * distance,
+        delay: Math.random() * 0.2,
+      }
+    })
+
+    setParticles(newParticles)
+    setTimeout(() => setParticles([]), 2200)
+  }, [])
 
   // Animation on scroll
   useEffect(() => {
@@ -159,16 +221,17 @@ function App() {
   return (
     <div className="app">
       <MatrixRain />
+      <GreenParticles particles={particles} onRemove={() => setParticles([])} />
 
       {/* Header */}
       <header>
         <div className="header-inner">
-          <a href="#" className="logo">
+          <div className="logo" onClick={handleLogoClick}>
             <div className="logo-icon">
               <LogoIcon className="logo-svg" />
             </div>
             <span className="logo-text">LIZARD CONNOR'S PIPES</span>
-          </a>
+          </div>
           <div className="header-right">
             <div className="theme-switcher">
               <button 
@@ -211,7 +274,7 @@ function App() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/>
               </svg>
-              {t.connect}
+              <span>{t.connect}</span>
             </a>
             <button className="btn btn-secondary lang-toggle" onClick={toggleLanguage}>
               <span className={lang === 'en' ? 'lang-active' : ''}>EN</span>
@@ -230,24 +293,23 @@ function App() {
         </div>
         <div className="features-grid">
           {t.features.map((f, i) => {
-  const IconComponent = f.icon;
-  // Определяем класс: comp-icon для компьютера, simple-icon для остальных
-  const svgClass = `feature-svg ${IconComponent === CompIcon ? 'comp-icon' : 'simple-icon'}`;
-  return (
-    <div key={i} className="feature-card fade-in">
-      <div className="feature-icon">
-        <IconComponent className={svgClass} />
-      </div>
-      <h3>{f.title}</h3>
-      <p>{f.desc}</p>
-    </div>
-  );
-  })}
+            const IconComponent = f.icon;
+            const svgClass = `feature-svg ${IconComponent === CompIcon ? 'comp-icon' : 'simple-icon'}`;
+            return (
+              <div key={i} className="feature-card fade-in">
+                <div className="feature-icon">
+                  <IconComponent className={svgClass} />
+                </div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
       {/* Scroll to Top Arrow */}
-      <div className="scroll-to-top" onClick={scrollToTop}>
+      <div className={`scroll-to-top ${showScrollTop ? 'visible' : 'hidden'}`} onClick={scrollToTop}>
         <svg viewBox="0 0 24 24">
           <path d="M12 19V5M5 12l7-7 7 7"/>
         </svg>
