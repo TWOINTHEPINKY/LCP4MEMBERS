@@ -1,0 +1,16 @@
+{
+  "name": "Lizard Connor's Pipes",
+  "short_name": "LCP",
+  "description": "Secure, fast, and private VPN service",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A1F0D",
+  "theme_color": "#317F43",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
