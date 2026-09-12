@@ -108,7 +108,51 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1re
   border-color: var(--moss-light); 
   transform: scale(1.05);
 }
-.feature-svg { width: 85%; height: 85%; } /* SVG занимает 85% контейнера */
+.feature-svg { 
+  width: 85%; 
+  height: 85%; 
+}
+
+/* Светлая тема: простые иконки (щит, ящерица) — полностью чёрные */
+[data-theme="light"] .feature-svg.simple-icon {
+  filter: brightness(0);
+}
+
+/* Светлая тема: компьютер — корпус чёрный, экран белый */
+[data-theme="light"] .feature-svg.comp-icon {
+  filter: none;
+}
+
+/* Корпус компьютера — чёрный */
+[data-theme="light"] .feature-svg.comp-icon path[fill="#E0D0F5"],
+[data-theme="light"] .feature-svg.comp-icon rect[fill="#E0D0F5"] {
+  fill: #000000 !important;
+}
+
+/* Экран — белый */
+[data-theme="light"] .feature-svg.comp-icon rect[fill="#0a0a0a"] {
+  fill: #FFFFFF !important;
+}
+
+/* Кабель — тёмно-серый */
+[data-theme="light"] .feature-svg.comp-icon path[stroke="#E0D0F5"] {
+  stroke: #333333 !important;
+}
+
+/* USB коннектор — чёрный */
+[data-theme="light"] .feature-svg.comp-icon rect[fill="#E0D0F5"] {
+  fill: #000000 !important;
+}
+
+/* Внутренности USB — белые */
+[data-theme="light"] .feature-svg.comp-icon rect[fill="#0a0a0a"] {
+  fill: #FFFFFF !important;
+}
+
+/* Тёмная тема: все иконки в оригинальных цветах */
+[data-theme="dark"] .feature-svg {
+  filter: none;
+}
 .feature-card h3 { font-family: 'Gloria Hallelujah', cursive; font-size: 1.5rem; font-weight: 400; margin-bottom: 0.8rem; color: var(--moss-text-bright); }
 .feature-card p { font-size: 0.95rem; line-height: 1.6; color: var(--moss-text-muted); }
 
@@ -149,6 +193,22 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1re
 footer { padding: 3rem 2rem; text-align: center; border-top: 1px solid var(--moss-border); margin-top: 4rem; position: relative; z-index: 2; }
 footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
 
+/* Чёрные иконки в светлой теме */
+[data-theme="light"] .feature-svg * {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Возвращаем оригинальные цвета в тёмной теме */
+[data-theme="dark"] .feature-svg *[fill="#E0D0F5"],
+[data-theme="dark"] .feature-svg *[fill="#E6D5F5"] {
+  fill: #E0D0F5 !important;
+}
+
+[data-theme="dark"] .feature-svg *[fill="#0a0a0a"] {
+  fill: #0a0a0a !important;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   header { padding: 1rem; }
@@ -164,3 +224,4 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   .scroll-to-top { bottom: 20px; right: 20px; width: 50px; height: 50px; }
   .scroll-to-top svg { width: 24px; height: 24px; }
 }
+

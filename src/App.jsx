@@ -56,7 +56,7 @@ const translations = {
       { 
         icon: LizIcon, 
         title: "Адаптивный протокол", 
-        desc: "Умное и незаметное переключение между протоколами для максимальной стаб良ности в любой сети." 
+        desc: "Умное и незаметное переключение между протоколами для максимальной стабильности в любой сети." 
       }
     ]
   }
@@ -222,22 +222,27 @@ function App() {
         </div>
       </section>
 
-      {/* Features (Теперь ровно 3 блока) */}
+      {/* Features */}
       <section className="features">
         <div className="section-header fade-in">
           <h2>{t.featuresTitle}</h2>
           <p>{t.featuresSubtitle}</p>
         </div>
         <div className="features-grid">
-          {t.features.map((f, i) => (
-            <div key={i} className="feature-card fade-in">
-              <div className="feature-icon">
-                <f.icon className="feature-svg" />
-              </div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
+          {t.features.map((f, i) => {
+  const IconComponent = f.icon;
+  // Определяем класс: comp-icon для компьютера, simple-icon для остальных
+  const svgClass = `feature-svg ${IconComponent === CompIcon ? 'comp-icon' : 'simple-icon'}`;
+  return (
+    <div key={i} className="feature-card fade-in">
+      <div className="feature-icon">
+        <IconComponent className={svgClass} />
+      </div>
+      <h3>{f.title}</h3>
+      <p>{f.desc}</p>
+    </div>
+  );
+  })}
         </div>
       </section>
 
