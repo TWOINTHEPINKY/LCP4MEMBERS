@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Unicase:wght@300;400;500;600;700&family=Gloria+Hallelujah&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display+SC:wght@400;700;900&display=swap');
 
 :root {
   --moss-primary: #317F43;
@@ -61,7 +61,7 @@ html {
 }
 
 body {
-  font-family: 'Gloria Hallelujah', cursive;
+  font-family: 'Playfair Display SC', serif;
   background-color: var(--moss-bg);
   color: var(--moss-text);
   transition: background-color var(--transition-speed) var(--transition-smooth), 

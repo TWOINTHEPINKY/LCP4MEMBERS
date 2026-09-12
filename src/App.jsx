@@ -138,7 +138,19 @@ const GreenParticles = ({ particles, onRemove }) => {
 }
 
 function App() {
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
+  // Определяем тему: сохранённая пользователем, либо системная, либо light по умолчанию
+const getInitialTheme = () => {
+  const saved = localStorage.getItem('theme')
+  if (saved) return saved
+  
+  // Проверяем системные настройки
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark'
+  }
+  return 'light'
+}
+
+const [theme, setTheme] = useState(getInitialTheme())
   const [lang, setLang] = useState('en')
   const [fading, setFading] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -217,6 +229,21 @@ function App() {
 
     return () => observer.disconnect()
   }, [lang])
+
+  // Слушаем изменения системной темы (только если пользователь не выбрал свою)
+useEffect(() => {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  
+  const handleChange = (e) => {
+    // Меняем тему только если пользователь ещё не выбрал свою вручную
+    if (!localStorage.getItem('theme')) {
+      setTheme(e.matches ? 'dark' : 'light')
+    }
+  }
+  
+  mediaQuery.addEventListener('change', handleChange)
+  return () => mediaQuery.removeEventListener('change', handleChange)
+}, [])
 
   return (
     <div className="app">
