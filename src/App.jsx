@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
+// Импорт SVG как React-компонентов
+import LogoIcon from './assets/icons/logo.svg?react'
+import SunIcon from './assets/icons/sun.svg?react'
+import MoonIcon from './assets/icons/moon.svg?react'
+import CompIcon from './assets/icons/comp.svg?react'
+import ShtIcon from './assets/icons/sht.svg?react'
+import LizIcon from './assets/icons/liz.svg?react'
+
 const translations = {
   en: {
     slogan: "We are no longer talking about treating diseases here. We are talking about the pursuit of perfection!",
@@ -10,12 +18,21 @@ const translations = {
     accountBtn: "Account",
     footer: "© 2026 Lizard Connor's Pipes. All rights reserved.",
     features: [
-      { icon: "🔒", title: "AES-256 Encryption", desc: "Military-grade encryption for every data packet." },
-      { icon: "⚡", title: "Lightning Speed", desc: "Optimized servers worldwide. No lag, no buffering." },
-      { icon: "", title: "50+ Locations", desc: "Bypass geo-restrictions and access content from anywhere." },
-      { icon: "🚫", title: "No-logs Policy", desc: "We don't store or share data about your activity." },
-      { icon: "📱", title: "All Platforms", desc: "Windows, macOS, iOS, Android, Linux. One app." },
-      { icon: "🦎", title: "Adaptive Protocol", desc: "Smart switching between protocols for max stability." }
+      { 
+        icon: CompIcon, 
+        title: "All Platforms & Speed", 
+        desc: "Lightning-fast performance across Windows, macOS, iOS, Android, and Linux with zero lag or buffering." 
+      },
+      { 
+        icon: ShtIcon, 
+        title: "Strict No-logs Policy", 
+        desc: "We never store or share data about your online activity. Complete anonymity is guaranteed." 
+      },
+      { 
+        icon: LizIcon, 
+        title: "Adaptive Protocol", 
+        desc: "Smart, seamless switching between protocols for maximum stability on any network." 
+      }
     ]
   },
   ru: {
@@ -26,12 +43,21 @@ const translations = {
     accountBtn: "Кабинет",
     footer: "© 2026 Lizard Connor's Pipes. Все права защищены.",
     features: [
-      { icon: "🔒", title: "Шифрование AES-256", desc: "Военный уровень шифрования для каждого пакета данных." },
-      { icon: "", title: "Молниеносная скорость", desc: "Оптимизированные серверы по всему миру. Без задержек." },
-      { icon: "🌍", title: "50+ локаций", desc: "Обходите географические ограничения и получайте доступ откуда угодно." },
-      { icon: "🚫", title: "No-logs политика", desc: "Мы не храним и не передаём данные о вашей активности." },
-      { icon: "📱", title: "Все платформы", desc: "Windows, macOS, iOS, Android, Linux. Одно приложение." },
-      { icon: "🦎", title: "Адаптивный протокол", desc: "Умное переключение между протоколами для стабильности." }
+      { 
+        icon: CompIcon, 
+        title: "Все платформы и скорость", 
+        desc: "Молниеносная работа на Windows, macOS, iOS, Android и Linux без задержек и буферизации." 
+      },
+      { 
+        icon: ShtIcon, 
+        title: "No-logs политика", 
+        desc: "Мы никогда не храним и не передаём данные о вашей активности. Полная анонимность гарантирована." 
+      },
+      { 
+        icon: LizIcon, 
+        title: "Адаптивный протокол", 
+        desc: "Умное и незаметное переключение между протоколами для максимальной стаб良ности в любой сети." 
+      }
     ]
   }
 }
@@ -132,23 +158,39 @@ function App() {
 
   return (
     <div className="app">
-      {/* Matrix Rain Background */}
       <MatrixRain />
 
       {/* Header */}
       <header>
         <div className="header-inner">
           <a href="#" className="logo">
-            <div className="logo-icon"></div>
+            <div className="logo-icon">
+              <LogoIcon className="logo-svg" />
+            </div>
             <span className="logo-text">LIZARD CONNOR'S PIPES</span>
           </a>
           <div className="header-right">
             <div className="theme-switcher">
-              <button className={`theme-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>☀</button>
-              <button className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>🌙</button>
+              <button 
+                className={`theme-btn ${theme === 'light' ? 'active' : ''}`} 
+                onClick={() => setTheme('light')}
+                title="Light Theme"
+              >
+                <SunIcon className="theme-svg" />
+              </button>
+              <button 
+                className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} 
+                onClick={() => setTheme('dark')}
+                title="Dark Theme"
+              >
+                <MoonIcon className="theme-svg" />
+              </button>
             </div>
             <button className="account-btn">
-              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
               <span>{t.accountBtn}</span>
             </button>
           </div>
@@ -166,7 +208,9 @@ function App() {
           </h1>
           <div className="hero-buttons">
             <a href="#" className="btn btn-primary">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/>
+              </svg>
               {t.connect}
             </a>
             <button className="btn btn-secondary lang-toggle" onClick={toggleLanguage}>
@@ -178,7 +222,7 @@ function App() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features (Теперь ровно 3 блока) */}
       <section className="features">
         <div className="section-header fade-in">
           <h2>{t.featuresTitle}</h2>
@@ -187,7 +231,9 @@ function App() {
         <div className="features-grid">
           {t.features.map((f, i) => (
             <div key={i} className="feature-card fade-in">
-              <div className="feature-icon">{f.icon}</div>
+              <div className="feature-icon">
+                <f.icon className="feature-svg" />
+              </div>
               <h3>{f.title}</h3>
               <p>{f.desc}</p>
             </div>

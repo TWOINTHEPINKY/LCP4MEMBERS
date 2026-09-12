@@ -27,20 +27,30 @@
 .fade-in.visible { opacity: 1; transform: translateY(0); }
 
 /* Header */
-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1.2rem 2rem; background: rgba(49, 127, 67, 0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--moss-border); transition: all var(--transition-speed) var(--transition-smooth); }
+header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1rem 2rem; background: rgba(49, 127, 67, 0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--moss-border); transition: all var(--transition-speed) var(--transition-smooth); }
 [data-theme="light"] header { background: rgba(241, 248, 233, 0.85); }
 [data-theme="dark"] header { background: rgba(10, 31, 13, 0.85); }
 .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
 .logo { display: flex; align-items: center; gap: 0.8rem; text-decoration: none; color: var(--moss-text-bright); }
-.logo-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--moss-dark); border: 1px solid var(--moss-border); display: flex; align-items: center; justify-content: center; transition: all 0.3s var(--transition-smooth); }
-.logo-icon::after { content: '?'; color: var(--moss-text-muted); font-size: 1.2rem; font-weight: 300; }
-.logo:hover .logo-icon { box-shadow: 0 0 20px var(--moss-glow); transform: scale(1.1); }
-.logo-text { font-family: 'Cormorant Unicase', serif; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.08em; color: var(--moss-text-bright); white-space: nowrap; }
+.logo-icon { 
+  width: 44px; 
+  height: 44px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  transition: all 0.3s var(--transition-smooth); 
+  border-radius: 8px; /* Скруглим немного, чтобы черный фон лого смотрелся как стикер */
+  overflow: hidden;
+}
+.logo-icon:hover { transform: scale(1.05); filter: drop-shadow(0 0 8px var(--moss-glow)); }
+.logo-svg { width: 100%; height: 100%; }
+.logo-text { font-family: 'Cormorant Unicase', serif; font-size: 1.3rem; font-weight: 600; letter-spacing: 0.06em; color: var(--moss-text-bright); white-space: nowrap; }
 .header-right { display: flex; align-items: center; gap: 1rem; }
 .theme-switcher { display: flex; align-items: center; gap: 0.3rem; background: var(--moss-card); border: 1px solid var(--moss-border); border-radius: 30px; padding: 0.3rem; }
-.theme-btn { width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.5s var(--transition-smooth); background: transparent; color: var(--moss-text-muted); font-size: 0.9rem; }
-.theme-btn.active { background: var(--moss-dark); color: var(--moss-text-bright); box-shadow: 0 0 15px var(--moss-glow); }
-.theme-btn:hover { transform: scale(1.1); color: var(--moss-text-bright); }
+.theme-btn { width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.5s var(--transition-smooth); background: transparent; color: var(--moss-text-muted); }
+.theme-btn.active { background: var(--moss-dark); box-shadow: 0 0 15px var(--moss-glow); }
+.theme-btn:hover { transform: scale(1.1); }
+.theme-svg { width: 26px; height: 26px; }
 .account-btn { padding: 0.6rem 1.3rem; border-radius: 30px; font-size: 0.85rem; font-weight: 500; transition: all 0.5s var(--transition-smooth); display: inline-flex; align-items: center; gap: 0.5rem; border: 1px solid var(--moss-border); cursor: pointer; background: var(--moss-dark); color: var(--moss-text); white-space: nowrap; }
 .account-btn:hover { background: var(--moss-deeper); border-color: var(--moss-light); color: var(--moss-text-bright); box-shadow: 0 0 25px var(--moss-glow); transform: translateY(-1px); }
 .account-btn svg { width: 16px; height: 16px; stroke: currentColor; }
@@ -76,14 +86,30 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1.2
 .section-header { text-align: center; margin-bottom: 4rem; }
 .section-header h2 { font-family: 'Gloria Hallelujah', cursive; font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: 1rem; color: var(--moss-text-bright); }
 .section-header p { font-size: 1.1rem; color: var(--moss-text-muted); max-width: 500px; margin: 0 auto; }
-.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-.feature-card { padding: 2.5rem; background: var(--moss-card); border: 1px solid var(--moss-border); border-radius: 20px; transition: all 0.6s var(--transition-smooth); position: relative; overflow: hidden; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+.feature-card { padding: 2.5rem; background: var(--moss-card); border: 1px solid var(--moss-border); border-radius: 20px; transition: all 0.6s var(--transition-smooth); position: relative; overflow: hidden; text-align: center; }
 .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--moss-light), transparent); opacity: 0; transition: opacity 0.6s var(--transition-smooth); }
 .feature-card:hover { transform: translateY(-5px); border-color: var(--moss-light); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 0 30px var(--moss-glow); }
 .feature-card:hover::before { opacity: 1; }
-.feature-icon { width: 56px; height: 56px; background: var(--moss-deeper); border: 1px solid var(--moss-border); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; font-size: 1.5rem; transition: all 0.6s var(--transition-smooth); }
-.feature-card:hover .feature-icon { box-shadow: 0 0 20px var(--moss-glow); border-color: var(--moss-light); }
-.feature-card h3 { font-family: 'Gloria Hallelujah', cursive; font-size: 1.6rem; font-weight: 400; margin-bottom: 0.8rem; color: var(--moss-text-bright); }
+.feature-icon { 
+  width: 72px; 
+  height: 72px; 
+  margin: 0 auto 1.5rem; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  background: transparent; /* Убрали фон, чтобы лавандовые SVG сияли */
+  border: 1px solid var(--moss-border); 
+  border-radius: 16px; 
+  transition: all 0.6s var(--transition-smooth); 
+}
+.feature-card:hover .feature-icon { 
+  box-shadow: 0 0 20px var(--moss-glow); 
+  border-color: var(--moss-light); 
+  transform: scale(1.05);
+}
+.feature-svg { width: 85%; height: 85%; } /* SVG занимает 85% контейнера */
+.feature-card h3 { font-family: 'Gloria Hallelujah', cursive; font-size: 1.5rem; font-weight: 400; margin-bottom: 0.8rem; color: var(--moss-text-bright); }
 .feature-card p { font-size: 0.95rem; line-height: 1.6; color: var(--moss-text-muted); }
 
 /* Scroll to Top Arrow */
@@ -104,13 +130,11 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1.2
   transition: all 0.5s var(--transition-smooth);
   box-shadow: 0 0 20px var(--moss-glow);
 }
-
 .scroll-to-top:hover {
   transform: translateY(-5px);
   box-shadow: 0 0 35px var(--moss-glow-strong);
   background: var(--moss-dark);
 }
-
 .scroll-to-top svg {
   width: 28px;
   height: 28px;
@@ -128,7 +152,7 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
 /* Mobile */
 @media (max-width: 768px) {
   header { padding: 1rem; }
-  .logo-text { font-size: 1.1rem; }
+  .logo-text { font-size: 1rem; }
   .account-btn span { display: none; }
   .account-btn { padding: 0.6rem; width: 38px; height: 38px; justify-content: center; }
   .hero { padding: 7rem 1.5rem 3rem; }
@@ -137,14 +161,6 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   .btn { width: 100%; justify-content: center; min-width: unset; }
   .features-grid { grid-template-columns: 1fr; }
   .feature-card { padding: 2rem; }
-  .scroll-to-top {
-    bottom: 20px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
-  }
-  .scroll-to-top svg {
-    width: 24px;
-    height: 24px;
-  }
+  .scroll-to-top { bottom: 20px; right: 20px; width: 50px; height: 50px; }
+  .scroll-to-top svg { width: 24px; height: 24px; }
 }
