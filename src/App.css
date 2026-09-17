@@ -594,13 +594,13 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   .scroll-to-top svg { width: 24px; height: 24px; }
 }
 
-/* --- Исправленные стили для страницы Login --- */
+/* --- Стили для страницы Login (Обновленные) --- */
 .login-container {
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Изменено с center, чтобы не перекрывалось */
-  min-height: calc(100vh - 150px); /* Учитываем высоту шапки и подвала */
-  padding-top: 120px; /* <-- ЭТО ОТТАЛКИВАЕТ КАРТОЧКУ ОТ ШАПКИ */
+  align-items: flex-start;
+  min-height: calc(100vh - 150px);
+  padding-top: 120px;
   padding-bottom: 50px;
   padding-left: 1rem;
   padding-right: 1rem;
@@ -611,15 +611,15 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   border-radius: 20px;
-  padding: 2.5rem 2rem;
+  padding: 3rem 2rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   text-align: center;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .login-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .login-logo {
@@ -636,53 +636,54 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
 }
 
 .login-header p {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
-.telegram-widget-wrapper {
+/* --- НОВАЯ КНОПКА TELEGRAM В СТИЛЕ САЙТА --- */
+.custom-telegram-btn {
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin: 1rem 0; /* Уменьшен отступ */
-  min-height: 45px; /* <-- УМЕНЬШЕНО, чтобы не было огромной дыры, если виджет не грузится */
-}
-
-.login-error {
-  background: rgba(255, 59, 48, 0.1);
-  color: #ff3b30;
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(255, 59, 48, 0.3);
-}
-
-.login-footer {
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.bot-link {
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 24px;
+  margin-bottom: 1.5rem;
+  background: rgba(0, 255, 136, 0.08); /* Полупрозрачный зеленый фон */
+  border: 1px solid var(--primary-color, #00ff88);
+  border-radius: 12px;
   color: var(--primary-color, #00ff88);
-  text-decoration: none;
+  font-size: 1.1rem;
   font-weight: 600;
-  transition: opacity 0.2s;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
 }
 
-.bot-link:hover {
-  opacity: 0.8;
-  text-decoration: underline;
+.custom-telegram-btn:hover {
+  background: var(--primary-color, #00ff88);
+  color: #000000; /* Черный текст для контраста на ярком фоне */
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.5); /* Неоновое свечение */
+  transform: translateY(-2px);
+}
+
+.custom-telegram-btn .tg-icon {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.3s ease;
+}
+
+.custom-telegram-btn:hover .tg-icon {
+  transform: translateX(3px) rotate(-5deg); /* Легкая анимация самолетика при наведении */
 }
 
 .back-btn {
-  margin-top: 1.5rem;
+  margin-top: 0.5rem;
   background: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
   border-radius: 8px;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.2rem;
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 0.9rem;
@@ -692,4 +693,5 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
 .back-btn:hover {
   color: var(--text-primary);
   border-color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
 }
