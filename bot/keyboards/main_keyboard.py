@@ -12,7 +12,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text=CONNECT_BUTTON,
-                    web_app=WebAppInfo(url=settings.web_url("connect.html")),
+                    web_app=WebAppInfo(url=settings.web_url("login")),
                     style="success",
                 )
             ],
@@ -34,5 +34,5 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
 def get_menu_button() -> MenuButtonWebApp:
     return MenuButtonWebApp(
         text=CABINET_BUTTON,
-        web_app=WebAppInfo(url=get_settings().web_app_url),
+        web_app=WebAppInfo(url=get_settings().web_url("account")),
     )

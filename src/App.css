@@ -607,9 +607,9 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
 }
 
 .login-card {
-  background: var(--card-bg, rgba(255, 255, 255, 0.05));
+  background: var(--moss-card);
   backdrop-filter: blur(10px);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border: 1px solid var(--moss-border);
   border-radius: 20px;
   padding: 3rem 2rem;
   width: 100%;
@@ -626,18 +626,18 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   width: 64px;
   height: 64px;
   margin-bottom: 1rem;
-  color: var(--primary-color, #00ff88);
+  color: var(--moss-text-bright);
 }
 
 .login-header h2 {
   font-size: 1.5rem;
   margin-bottom: 0.5rem;
-  color: var(--text-primary);
+  color: var(--moss-text-bright);
 }
 
 .login-header p {
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--moss-text-muted);
   line-height: 1.5;
 }
 
@@ -650,10 +650,12 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   width: 100%;
   padding: 14px 24px;
   margin-bottom: 1.5rem;
-  background: rgba(0, 255, 136, 0.08); /* Полупрозрачный зеленый фон */
-  border: 1px solid var(--primary-color, #00ff88);
+  background: var(--moss-card);
+  border: 1px solid var(--moss-light);
   border-radius: 12px;
-  color: var(--primary-color, #00ff88);
+  color: var(--moss-text-bright);
+  cursor: pointer;
+  font-family: inherit;
   font-size: 1.1rem;
   font-weight: 600;
   text-decoration: none;
@@ -662,9 +664,9 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
 }
 
 .custom-telegram-btn:hover {
-  background: var(--primary-color, #00ff88);
-  color: #000000; /* Черный текст для контраста на ярком фоне */
-  box-shadow: 0 0 25px rgba(0, 255, 136, 0.5); /* Неоновое свечение */
+  background: var(--moss-dark);
+  color: var(--moss-text-bright);
+  box-shadow: 0 0 25px var(--moss-glow);
   transform: translateY(-2px);
 }
 
@@ -681,17 +683,25 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
 .back-btn {
   margin-top: 0.5rem;
   background: transparent;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  border: 1px solid var(--moss-border);
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
-  color: var(--text-secondary);
+  color: var(--moss-text-muted);
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
 }
 
 .back-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--text-primary);
+  color: var(--moss-text-bright);
+  border-color: var(--moss-light);
   background: rgba(255, 255, 255, 0.05);
 }
+
+.custom-telegram-btn:disabled { opacity: 0.6; cursor: wait; transform: none; }
+.auth-status { margin-bottom: 1.5rem; color: var(--moss-text-muted); line-height: 1.6; }
+.auth-status p + p { margin-top: 0.5rem; }
+.account-details { margin: 0 0 2rem; text-align: left; }
+.account-details div { padding: 0.8rem 0; border-bottom: 1px solid var(--moss-border); }
+.account-details dt { font-size: 0.85rem; color: var(--moss-text-muted); }
+.account-details dd { margin: 0.35rem 0 0; color: var(--moss-text-bright); overflow-wrap: anywhere; }

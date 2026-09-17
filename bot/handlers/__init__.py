@@ -7,11 +7,12 @@ from aiogram.types import ErrorEvent
 
 from handlers.about import router as about_router
 from handlers.admin import router as admin_router
+from handlers.auth import router as auth_router
 from handlers.start import router as start_router
 
 logger = logging.getLogger(__name__)
 router = Router(name="lizard")
-router.include_routers(start_router, about_router, admin_router)
+router.include_routers(start_router, auth_router, about_router, admin_router)
 
 
 @router.error()

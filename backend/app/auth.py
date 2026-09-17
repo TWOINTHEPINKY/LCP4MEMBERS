@@ -1,87 +1,156 @@
-import os
 import hashlib
 import hmac
 import time
-from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from jose import jwt
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+from pydantic import BaseModel, Field, ValidationError
+
+from .challenges import ChallengeError, ChallengeStore
+from .settings import Settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+bearer = HTTPBearer(auto_error=False)
+LoginId = Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{32}$")]
 
-# Модель данных, которую присылает фронтенд после нажатия кнопки в Telegram
-class TelegramAuthRequest(BaseModel):
-    id: int
-    first_name: str
-    username: str | None = None
+
+class TelegramUser(BaseModel):
+    id: int = Field(gt=0, strict=True)
+    first_name: str = Field(min_length=1, max_length=256)
+    username: str | None = Field(default=None, max_length=256)
+    last_name: str | None = Field(default=None, max_length=256)
+
+
+class TelegramAuthRequest(TelegramUser):
+    photo_url: str | None = None
     auth_date: int
-    hash: str
+    hash: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
+
+
+class BotDecisionRequest(TelegramUser):
+    login_id: LoginId
+
+
+def settings_for(request: Request) -> Settings:
+    return request.app.state.settings
+
+
+def store_for(request: Request) -> ChallengeStore:
+    return request.app.state.challenge_store
+
+
+def no_store(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+
 
 def verify_telegram_auth(data: dict, bot_token: str) -> bool:
-    """
-    Официальный алгоритм Telegram для проверки подлинности данных виджета.
-    """
-    # 1. Исключаем поле 'hash' из проверки
-    check_data = {k: v for k, v in data.items() if k != "hash"}
-    
-    # 2. Сортируем ключи по алфавиту
-    sorted_keys = sorted(check_data.keys())
-    
-    # 3. Создаем строку вида "key=value\nkey2=value2"
-    data_check_string = "\n".join([f"{k}={check_data[k]}" for k in sorted_keys])
-    
-    # 4. Создаем секретный ключ = SHA256 от токена бота
+    check_data = {k: v for k, v in data.items() if k != "hash" and v is not None}
+    data_check_string = "\n".join(f"{key}={check_data[key]}" for key in sorted(check_data))
     secret_key = hashlib.sha256(bot_token.encode()).digest()
-    
-    # 5. Вычисляем HMAC-SHA256
-    calculated_hash = hmac.new(
-        secret_key, 
-        data_check_string.encode(), 
-        hashlib.sha256
-    ).hexdigest()
-    
-    # 6. Сравниваем с присланным хешем
-    if calculated_hash != data.get("hash"):
+    calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(calculated_hash.encode(), str(data.get("hash", "")).encode()):
         return False
-        
-    # 7. (Опционально) Проверяем, что данные не старше 24 часов
-    if time.time() - int(data.get("auth_date", 0)) > 86400:
+    try:
+        age = time.time() - int(data.get("auth_date", 0))
+    except (TypeError, ValueError):
         return False
-        
-    return True
+    return -30 <= age <= 86400
+
+
+def token_response(user: TelegramUser, settings: Settings) -> dict:
+    now = datetime.now(timezone.utc)
+    token = jwt.encode(
+        {"sub": str(user.id), "username": user.username, "first_name": user.first_name,
+         "last_name": user.last_name, "iat": now, "exp": now + timedelta(days=30)},
+        settings.jwt_secret, algorithm="HS256",
+    )
+    return {"access_token": token, "token_type": "bearer", "user": user.model_dump()}
+
+
+def require_bot_secret(
+    settings: Annotated[Settings, Depends(settings_for)],
+    secret: Annotated[str | None, Header(alias="X-Bot-Internal-Secret")] = None,
+) -> None:
+    if not secret or not hmac.compare_digest(secret.encode(), settings.bot_internal_secret.encode()):
+        raise HTTPException(status_code=401, detail="invalid_internal_secret")
+
 
 @router.post("/telegram")
-async def telegram_login(user_data: TelegramAuthRequest):
-    bot_token = os.getenv("BOT_TOKEN")
-    jwt_secret = os.getenv("JWT_SECRET", "fallback_secret")
-    
-    if not bot_token:
-        raise HTTPException(status_code=500, detail="BOT_TOKEN не настроен на сервере")
-
-    # Преобразуем pydantic модель в словарь для проверки
-    data_dict = user_data.model_dump()
-    
-    # ПРОВЕРКА ПОДЛИННОСТИ
-    if not verify_telegram_auth(data_dict, bot_token):
+async def telegram_login(user_data: TelegramAuthRequest, response: Response,
+                         settings: Annotated[Settings, Depends(settings_for)]):
+    no_store(response)
+    if not verify_telegram_auth(user_data.model_dump(exclude_none=True), settings.bot_token):
         raise HTTPException(status_code=401, detail="Неверная подпись Telegram. Доступ запрещен.")
+    return token_response(TelegramUser.model_validate(user_data.model_dump()), settings)
 
-    # Если все ок, генерируем JWT токен на 30 дней
-    expire = datetime.utcnow() + timedelta(days=30)
-    to_encode = {
-        "sub": str(user_data.id),          # ID пользователя Telegram
-        "username": user_data.username,
-        "first_name": user_data.first_name,
-        "exp": expire
-    }
-    
-    token = jwt.encode(to_encode, jwt_secret, algorithm="HS256")
-    
+
+@router.post("/bot/start")
+async def bot_start(response: Response, settings: Annotated[Settings, Depends(settings_for)],
+                    store: Annotated[ChallengeStore, Depends(store_for)]):
+    no_store(response)
+    try:
+        login_id, browser_token = await store.create()
+    except ChallengeError as error:
+        raise HTTPException(error.status_code, detail=error.code) from None
     return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {
-            "id": user_data.id,
-            "username": user_data.username,
-            "first_name": user_data.first_name
-        }
+        "login_id": login_id,
+        # This proof stays in the initiating browser and never enters the deep link.
+        "browser_token": browser_token,
+        "telegram_url": f"https://t.me/{settings.bot_username}?start=login_{login_id}",
+        "expires_in": store.ttl,
     }
+
+
+@router.post("/bot/confirm", dependencies=[Depends(require_bot_secret)])
+async def bot_confirm(data: BotDecisionRequest, store: Annotated[ChallengeStore, Depends(store_for)]):
+    try:
+        await store.decide(data.login_id, data.model_dump(exclude={"login_id"}), approve=True)
+    except ChallengeError as error:
+        raise HTTPException(error.status_code, detail=error.code) from None
+    return {"status": "approved"}
+
+
+@router.post("/bot/cancel", dependencies=[Depends(require_bot_secret)])
+async def bot_cancel(data: BotDecisionRequest, store: Annotated[ChallengeStore, Depends(store_for)]):
+    try:
+        await store.decide(data.login_id, data.model_dump(exclude={"login_id"}), approve=False)
+    except ChallengeError as error:
+        raise HTTPException(error.status_code, detail=error.code) from None
+    return {"status": "cancelled"}
+
+
+@router.get("/bot/status/{login_id}")
+async def bot_status(login_id: LoginId, response: Response,
+                     settings: Annotated[Settings, Depends(settings_for)],
+                     store: Annotated[ChallengeStore, Depends(store_for)],
+                     browser_token: Annotated[str | None, Header(alias="X-Login-Token")] = None):
+    no_store(response)
+    if not browser_token:
+        raise HTTPException(status_code=403, detail="invalid_browser_token")
+    try:
+        status, user = await store.consume(login_id, browser_token)
+    except ChallengeError as error:
+        raise HTTPException(error.status_code, detail=error.code) from None
+    if status == "approved":
+        return {"status": status, **token_response(TelegramUser.model_validate(user), settings)}
+    return {"status": status}
+
+
+@router.get("/me", response_model=TelegramUser)
+async def me(response: Response, settings: Annotated[Settings, Depends(settings_for)],
+             credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]):
+    no_store(response)
+    unauthorized = HTTPException(401, detail="invalid_token", headers={"WWW-Authenticate": "Bearer"})
+    if credentials is None:
+        raise unauthorized
+    try:
+        claims = jwt.decode(credentials.credentials, settings.jwt_secret, algorithms=["HS256"],
+                            options={"require_exp": True, "require_sub": True})
+        return TelegramUser(id=int(claims["sub"]), username=claims.get("username"),
+                            first_name=claims["first_name"], last_name=claims.get("last_name"))
+    except (JWTError, ValidationError, ValueError, TypeError, KeyError, OverflowError):
+        raise unauthorized from None

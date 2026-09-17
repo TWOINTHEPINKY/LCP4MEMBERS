@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
 
 import LogoIcon from './assets/icons/logo.svg?react'
@@ -13,7 +13,8 @@ import Preloader from './components/Preloader'
 import Toast from './components/Toast'
 import CookieBanner from './components/CookieBanner'
 import ErrorBoundary from './components/ErrorBoundary'
-import Login from './pages/Login' // Импортируем новую страницу логина
+import Login from './pages/Login'
+import Account from './pages/Account'
 
 const translations = {
   en: {
@@ -103,7 +104,7 @@ const GreenParticles = ({ particles }) => (
 )
 
 // --- Компонент Главной страницы (ваш оригинальный код) ---
-function HomePage({ t, theme, lang, handleThemeChange, toggleLanguage, handleLogoClick, particles, fading, typewriterText, isTyping, connectBtnRef, langBtnRef, handleMagneticMove, handleMagneticLeave, handleTiltMove, handleTiltLeave, toast }) {
+function HomePage({ t, fading, typewriterText, isTyping, connectBtnRef, handleMagneticMove, handleMagneticLeave, handleTiltMove, handleTiltLeave }) {
   return (
     <>
       <section className="hero">
@@ -118,10 +119,10 @@ function HomePage({ t, theme, lang, handleThemeChange, toggleLanguage, handleLog
             <span className="quote-mark">"</span>
           </h1>
           <div className="hero-buttons">
-            <a href="#" className="btn btn-primary connect-btn magnetic-btn" ref={connectBtnRef} onMouseMove={(e) => handleMagneticMove(e, connectBtnRef)} onMouseLeave={() => handleMagneticLeave(connectBtnRef)} aria-label="Connect to VPN">
+            <Link to="/login" className="btn btn-primary connect-btn magnetic-btn" ref={connectBtnRef} onMouseMove={(e) => handleMagneticMove(e, connectBtnRef)} onMouseLeave={() => handleMagneticLeave(connectBtnRef)} aria-label="Connect to VPN">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
               <span>{t.connect}</span>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -193,6 +194,7 @@ function App() {
   const connectBtnRef = useRef(null)
   const langBtnRef = useRef(null)
   const navigate = useNavigate()
+  const { pathname } = useLocation()
 
   const t = translations[lang]
   const fullText = t.slogan
@@ -241,7 +243,7 @@ function App() {
     )
     document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el))
     return () => observer.disconnect()
-  }, [lang, loading])
+  }, [lang, loading, pathname])
 
   const toggleLanguage = () => {
     setFading(true)
@@ -336,7 +338,7 @@ function App() {
               {/* ОБНОВЛЕННАЯ КНОПКА КАБИНЕТА */}
               <button 
                 className="account-btn" 
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/account')}
                 aria-label="Account"
               >
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -348,21 +350,20 @@ function App() {
           </div>
         </header>
 
-        {/* Роутинг: показывает главную или страницу логина */}
+        {/* Главная, вход и личный кабинет. */}
         <Routes>
           <Route path="/" element={
             <HomePage 
-              t={t} theme={theme} lang={lang} handleThemeChange={handleThemeChange} 
-              toggleLanguage={toggleLanguage} handleLogoClick={handleLogoClick} 
-              particles={particles} fading={fading} typewriterText={typewriterText} 
-              isTyping={isTyping} connectBtnRef={connectBtnRef} langBtnRef={langBtnRef} 
+              t={t} fading={fading} typewriterText={typewriterText}
+              isTyping={isTyping} connectBtnRef={connectBtnRef}
               handleMagneticMove={handleMagneticMove} handleMagneticLeave={handleMagneticLeave} 
-              handleTiltMove={handleTiltMove} handleTiltLeave={handleTiltLeave} toast={toast} 
+              handleTiltMove={handleTiltMove} handleTiltLeave={handleTiltLeave}
             />
           } />
           <Route path="/login" element={
-            <Login t={t} lang={lang} toggleLanguage={toggleLanguage} theme={theme} handleThemeChange={handleThemeChange} />
+            <Login lang={lang} />
           } />
+          <Route path="/account" element={<Account lang={lang} />} />
         </Routes>
 
         <div className={`scroll-to-top ${showScrollTop ? 'visible' : 'hidden'}`} onClick={scrollToTop} role="button" tabIndex="0" aria-label="Scroll to top">

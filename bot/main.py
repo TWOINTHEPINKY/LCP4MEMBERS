@@ -3,6 +3,7 @@
 import asyncio
 import logging
 
+from aiohttp import ClientSession, ClientTimeout
 from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramAPIError, TelegramUnauthorizedError
 from aiogram.types import BotCommand, BotCommandScopeDefault
@@ -22,7 +23,7 @@ async def main() -> None:
     dispatcher.include_router(router)
 
     logger.info("Запуск LIZARD Bot")
-    async with Bot(token=settings.bot_token) as bot:
+    async with Bot(token=settings.bot_token) as bot, ClientSession(timeout=ClientTimeout(total=10)) as auth_http:
         # Заменяем default-список команд; /admin остаётся доступен через его handler.
         await bot.set_my_commands(
             commands=[BotCommand(command="start", description=START_COMMAND_DESCRIPTION)],
@@ -36,6 +37,7 @@ async def main() -> None:
             bot,
             allowed_updates=dispatcher.resolve_used_update_types(),
             close_bot_session=False,  # Сессию закрывает async with, в том числе при ошибке.
+            auth_http=auth_http,
         )
 
 
