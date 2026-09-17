@@ -160,27 +160,6 @@ const GreenParticles = ({ particles }) => (
   </>
 )
 
-const CursorTrail = () => {
-  const [dots, setDots] = useState([])
-  useEffect(() => {
-    const handleMove = (e) => {
-      setDots((prev) => [...prev.slice(-15), { id: Date.now() + Math.random(), x: e.clientX, y: e.clientY }])
-    }
-    window.addEventListener('mousemove', handleMove)
-    return () => window.removeEventListener('mousemove', handleMove)
-  }, [])
-  useEffect(() => {
-    const interval = setInterval(() => setDots((prev) => prev.slice(1)), 80)
-    return () => clearInterval(interval)
-  }, [])
-  return (
-    <div className="cursor-trail">
-      {dots.map((dot, i) => (
-        <div key={dot.id} className="trail-dot" style={{ left: dot.x, top: dot.y, opacity: (i + 1) / Math.max(dots.length, 1) * 0.6 }} />
-      ))}
-    </div>
-  )
-}
 
 function App() {
   const getInitialTheme = () => {
@@ -310,7 +289,6 @@ function App() {
       <div className="app">
         <MatrixRain />
         <GreenParticles particles={particles} />
-        <CursorTrail />
 
         <header>
           <div className="header-inner">

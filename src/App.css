@@ -119,6 +119,7 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1re
   border-color: var(--moss-light); 
   color: var(--moss-text-bright); 
   box-shadow: 0 0 25px var(--moss-glow); 
+  transform: translateY(-1px); 
 }
 .account-btn svg { 
   width: 20px; 
@@ -365,49 +366,18 @@ header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 1re
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px dashed var(--moss-border);
-  border-radius: 16px;
-  transition: all 0.6s var(--transition-smooth);
-}
-
-.pricing-icon {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px dashed var(--moss-border);
+  border: 2px solid var(--moss-light); /* Сплошная, жирная, зеленая */
   border-radius: 16px;
   transition: all 0.6s var(--transition-smooth);
   color: var(--moss-text-bright);
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.3); /* Легкая подсветка по умолчанию */
 }
 
 .pricing-card:hover .pricing-icon {
-  border-color: var(--moss-light);
-  box-shadow: 0 0 15px var(--moss-glow);
+  border-color: var(--moss-glow-strong); /* Яркий зеленый при наведении */
+  box-shadow: 0 0 20px var(--moss-glow), 0 0 40px rgba(76, 175, 80, 0.5); /* Сильная подсветка */
   color: var(--moss-light);
-}
-
-.plan-icon-svg {
-  width: 48px;
-  height: 48px;
-}
-
-/* Светлая тема: иконки тарифов чёрные */
-[data-theme="light"] .plan-icon-svg text {
-  fill: #000000 !important;
-}
-
-/* Тёмная тема: иконки тарифов белые */
-[data-theme="dark"] .plan-icon-svg text {
-  fill: #E8F5E9 !important;
-}
-
-.pricing-card:hover .pricing-icon {
-  border-color: var(--moss-light);
-  box-shadow: 0 0 15px var(--moss-glow);
+  transform: scale(1.05);
 }
 .plan-name {
   font-family: 'Playfair Display SC', serif;
