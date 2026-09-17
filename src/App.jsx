@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
 import './App.css'
 
 import LogoIcon from './assets/icons/logo.svg?react'
@@ -12,6 +13,7 @@ import Preloader from './components/Preloader'
 import Toast from './components/Toast'
 import CookieBanner from './components/CookieBanner'
 import ErrorBoundary from './components/ErrorBoundary'
+import Login from './pages/Login' // Импортируем новую страницу логина
 
 const translations = {
   en: {
@@ -32,39 +34,9 @@ const translations = {
       { icon: LizIcon, title: "Adaptive Protocol", desc: "Smart, seamless switching between protocols for maximum stability on any network." }
     ],
     plans: [
-      { 
-        name: "Basic", 
-        price: "299", 
-        devices: "2 devices", 
-        popular: false,
-        icon: (
-          <svg viewBox="0 0 64 64" className="plan-icon-svg">
-            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">B</text>
-          </svg>
-        )
-      },
-      { 
-        name: "Plus", 
-        price: "699", 
-        devices: "5 devices", 
-        popular: true,
-        icon: (
-          <svg viewBox="0 0 64 64" className="plan-icon-svg">
-            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">+</text>
-          </svg>
-        )
-      },
-      { 
-        name: "Pro Plus", 
-        price: "1199", 
-        devices: "10 devices", 
-        popular: false,
-        icon: (
-          <svg viewBox="0 0 64 64" className="plan-icon-svg">
-            <text x="32" y="42" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">P+</text>
-          </svg>
-        )
-      }
+      { name: "Basic", price: "299", devices: "2 devices", popular: false, icon: <svg viewBox="0 0 64 64" className="plan-icon-svg"><text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">B</text></svg> },
+      { name: "Plus", price: "699", devices: "5 devices", popular: true, icon: <svg viewBox="0 0 64 64" className="plan-icon-svg"><text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">+</text></svg> },
+      { name: "Pro Plus", price: "1199", devices: "10 devices", popular: false, icon: <svg viewBox="0 0 64 64" className="plan-icon-svg"><text x="32" y="42" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">P+</text></svg> }
     ]
   },
   ru: {
@@ -85,39 +57,9 @@ const translations = {
       { icon: LizIcon, title: "Адаптивный протокол", desc: "Умное и незаметное переключение между протоколами для максимальной стабильности в любой сети." }
     ],
     plans: [
-      { 
-        name: "Basic", 
-        price: "299", 
-        devices: "2 устройства", 
-        popular: false,
-        icon: (
-          <svg viewBox="0 0 64 64" className="plan-icon-svg">
-            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">B</text>
-          </svg>
-        )
-      },
-      { 
-        name: "Plus", 
-        price: "699", 
-        devices: "5 устройств", 
-        popular: true,
-        icon: (
-          <svg viewBox="0 0 64 64" className="plan-icon-svg">
-            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">+</text>
-          </svg>
-        )
-      },
-      { 
-        name: "Pro Plus", 
-        price: "1199", 
-        devices: "10 устройств", 
-        popular: false,
-        icon: (
-          <svg viewBox="0 0 64 64" className="plan-icon-svg">
-            <text x="32" y="42" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">P+</text>
-          </svg>
-        )
-      }
+      { name: "Basic", price: "299", devices: "2 устройства", popular: false, icon: <svg viewBox="0 0 64 64" className="plan-icon-svg"><text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">B</text></svg> },
+      { name: "Plus", price: "699", devices: "5 устройств", popular: true, icon: <svg viewBox="0 0 64 64" className="plan-icon-svg"><text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">+</text></svg> },
+      { name: "Pro Plus", price: "1199", devices: "10 устройств", popular: false, icon: <svg viewBox="0 0 64 64" className="plan-icon-svg"><text x="32" y="42" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">P+</text></svg> }
     ]
   }
 }
@@ -160,7 +102,76 @@ const GreenParticles = ({ particles }) => (
   </>
 )
 
+// --- Компонент Главной страницы (ваш оригинальный код) ---
+function HomePage({ t, theme, lang, handleThemeChange, toggleLanguage, handleLogoClick, particles, fading, typewriterText, isTyping, connectBtnRef, langBtnRef, handleMagneticMove, handleMagneticLeave, handleTiltMove, handleTiltLeave, toast }) {
+  return (
+    <>
+      <section className="hero">
+        <div className="hero-bg-pattern"></div>
+        <div className="hero-content">
+          <h1>
+            <span className="quote-mark">"</span>
+            <span className={`lang-slogan ${fading ? 'fading' : ''}`}>
+              {typewriterText}
+              {isTyping && <span className="typewriter-cursor">|</span>}
+            </span>
+            <span className="quote-mark">"</span>
+          </h1>
+          <div className="hero-buttons">
+            <a href="#" className="btn btn-primary connect-btn magnetic-btn" ref={connectBtnRef} onMouseMove={(e) => handleMagneticMove(e, connectBtnRef)} onMouseLeave={() => handleMagneticLeave(connectBtnRef)} aria-label="Connect to VPN">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
+              <span>{t.connect}</span>
+            </a>
+          </div>
+        </div>
+      </section>
 
+      <section className="features">
+        <div className="section-header fade-in">
+          <h2>{t.featuresTitle}</h2>
+          <p>{t.featuresSubtitle}</p>
+        </div>
+        <div className="features-grid">
+          {t.features.map((f, i) => {
+            const IconComponent = f.icon
+            const svgClass = `feature-svg ${IconComponent === CompIcon ? 'comp-icon' : 'simple-icon'}`
+            return (
+              <div key={i} className="feature-card fade-in tilt-card" onMouseMove={handleTiltMove} onMouseLeave={handleTiltLeave}>
+                <div className="feature-icon"><IconComponent className={svgClass} /></div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="pricing">
+        <div className="section-header fade-in">
+          <h2>{t.pricingTitle}</h2>
+          <p>{t.pricingSubtitle}</p>
+        </div>
+        <div className="pricing-grid">
+          {t.plans.map((plan, i) => (
+            <div key={i} className={`pricing-card fade-in tilt-card ${plan.popular ? 'popular' : ''}`} onMouseMove={handleTiltMove} onMouseLeave={handleTiltLeave}>
+              {plan.popular && <div className="popular-badge">Popular</div>}
+              <div className="pricing-icon">{plan.icon}</div>
+              <h3 className="plan-name">{plan.name}</h3>
+              <div className="plan-price">
+                <span className="price">{plan.price}₽</span>
+                <span className="period">{t.perMonth}</span>
+              </div>
+              <p className="plan-devices">{plan.devices}</p>
+              <button className="btn btn-primary plan-btn">{t.choose}</button>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  )
+}
+
+// --- Основной компонент App с роутингом ---
 function App() {
   const getInitialTheme = () => {
     const saved = localStorage.getItem('theme')
@@ -178,8 +189,10 @@ function App() {
   const [toast, setToast] = useState(null)
   const [typewriterText, setTypewriterText] = useState('')
   const [isTyping, setIsTyping] = useState(true)
+  
   const connectBtnRef = useRef(null)
   const langBtnRef = useRef(null)
+  const navigate = useNavigate()
 
   const t = translations[lang]
   const fullText = t.slogan
@@ -263,6 +276,7 @@ function App() {
     const y = e.clientY - rect.top - rect.height / 2
     ref.current.style.transform = `translate(${x * 0.05}px, ${y * 0.05}px)`
   }
+  
   const handleMagneticLeave = (ref) => {
     if (ref.current) ref.current.style.transform = 'translate(0, 0)'
   }
@@ -278,6 +292,7 @@ function App() {
     const rotateY = (centerX - x) / 15
     card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-5px)`
   }
+  
   const handleTiltLeave = (e) => {
     e.currentTarget.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)'
   }
@@ -317,7 +332,13 @@ function App() {
                 <span className="lang-divider">/</span>
                 <span className={lang === 'ru' ? 'lang-active' : ''}>RU</span>
               </button>
-              <button className="account-btn" aria-label="Account">
+              
+              {/* ОБНОВЛЕННАЯ КНОПКА КАБИНЕТА */}
+              <button 
+                className="account-btn" 
+                onClick={() => navigate('/login')}
+                aria-label="Account"
+              >
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
@@ -327,86 +348,22 @@ function App() {
           </div>
         </header>
 
-        <section className="hero">
-          <div className="hero-bg-pattern"></div>
-          <div className="hero-content">
-            <h1>
-              <span className="quote-mark">"</span>
-              <span className={`lang-slogan ${fading ? 'fading' : ''}`}>
-                {typewriterText}
-                {isTyping && <span className="typewriter-cursor">|</span>}
-              </span>
-              <span className="quote-mark">"</span>
-            </h1>
-            <div className="hero-buttons">
-              <a
-                href="#"
-                className="btn btn-primary connect-btn magnetic-btn"
-                ref={connectBtnRef}
-                onMouseMove={(e) => handleMagneticMove(e, connectBtnRef)}
-                onMouseLeave={() => handleMagneticLeave(connectBtnRef)}
-                aria-label="Connect to VPN"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
-                <span>{t.connect}</span>
-              </a>
-            </div>
-          </div>
-        </section>
-
-        <section className="features">
-          <div className="section-header fade-in">
-            <h2>{t.featuresTitle}</h2>
-            <p>{t.featuresSubtitle}</p>
-          </div>
-          <div className="features-grid">
-            {t.features.map((f, i) => {
-              const IconComponent = f.icon
-              const svgClass = `feature-svg ${IconComponent === CompIcon ? 'comp-icon' : 'simple-icon'}`
-              return (
-                <div
-                  key={i}
-                  className="feature-card fade-in tilt-card"
-                  onMouseMove={handleTiltMove}
-                  onMouseLeave={handleTiltLeave}
-                >
-                  <div className="feature-icon"><IconComponent className={svgClass} /></div>
-                  <h3>{f.title}</h3>
-                  <p>{f.desc}</p>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-
-        <section className="pricing">
-          <div className="section-header fade-in">
-            <h2>{t.pricingTitle}</h2>
-            <p>{t.pricingSubtitle}</p>
-          </div>
-          <div className="pricing-grid">
-            {t.plans.map((plan, i) => (
-              <div
-                key={i}
-                className={`pricing-card fade-in tilt-card ${plan.popular ? 'popular' : ''}`}
-                onMouseMove={handleTiltMove}
-                onMouseLeave={handleTiltLeave}
-              >
-                {plan.popular && <div className="popular-badge">Popular</div>}
-                <div className="pricing-icon">{plan.icon}</div>
-                <h3 className="plan-name">{plan.name}</h3>
-                <div className="plan-price">
-                  <span className="price">{plan.price}₽</span>
-                  <span className="period">{t.perMonth}</span>
-                </div>
-                <p className="plan-devices">{plan.devices}</p>
-                <button className="btn btn-primary plan-btn">
-                  {t.choose}
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Роутинг: показывает главную или страницу логина */}
+        <Routes>
+          <Route path="/" element={
+            <HomePage 
+              t={t} theme={theme} lang={lang} handleThemeChange={handleThemeChange} 
+              toggleLanguage={toggleLanguage} handleLogoClick={handleLogoClick} 
+              particles={particles} fading={fading} typewriterText={typewriterText} 
+              isTyping={isTyping} connectBtnRef={connectBtnRef} langBtnRef={langBtnRef} 
+              handleMagneticMove={handleMagneticMove} handleMagneticLeave={handleMagneticLeave} 
+              handleTiltMove={handleTiltMove} handleTiltLeave={handleTiltLeave} toast={toast} 
+            />
+          } />
+          <Route path="/login" element={
+            <Login t={t} lang={lang} toggleLanguage={toggleLanguage} theme={theme} handleThemeChange={handleThemeChange} />
+          } />
+        </Routes>
 
         <div className={`scroll-to-top ${showScrollTop ? 'visible' : 'hidden'}`} onClick={scrollToTop} role="button" tabIndex="0" aria-label="Scroll to top">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>

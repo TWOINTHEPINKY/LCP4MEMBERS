@@ -593,3 +593,103 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   .scroll-to-top { bottom: 20px; right: 20px; width: 50px; height: 50px; }
   .scroll-to-top svg { width: 24px; height: 24px; }
 }
+
+/* --- Исправленные стили для страницы Login --- */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Изменено с center, чтобы не перекрывалось */
+  min-height: calc(100vh - 150px); /* Учитываем высоту шапки и подвала */
+  padding-top: 120px; /* <-- ЭТО ОТТАЛКИВАЕТ КАРТОЧКУ ОТ ШАПКИ */
+  padding-bottom: 50px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.login-card {
+  background: var(--card-bg, rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.login-header {
+  margin-bottom: 1.5rem;
+}
+
+.login-logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+  color: var(--primary-color, #00ff88);
+}
+
+.login-header h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.login-header p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.telegram-widget-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem 0; /* Уменьшен отступ */
+  min-height: 45px; /* <-- УМЕНЬШЕНО, чтобы не было огромной дыры, если виджет не грузится */
+}
+
+.login-error {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.login-footer {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.bot-link {
+  color: var(--primary-color, #00ff88);
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.bot-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.back-btn {
+  margin-top: 1.5rem;
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
