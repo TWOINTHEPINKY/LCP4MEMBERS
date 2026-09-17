@@ -75,7 +75,13 @@ export default function Login({ t, lang, toggleLanguage, theme, handleThemeChang
         {error && <div className="login-error">{error}</div>}
 
         <div className="telegram-widget-wrapper" ref={widgetContainerRef}>
-          {/* Сюда загрузится кнопка Telegram */}
+  {/* Сюда Telegram попытается вставить кнопку. Если не сможет, останется текст ниже */}
+  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem' }}>
+    Если кнопка не появляется,{' '}
+    <a href="https://t.me/connorsvpn_bot" target="_blank" rel="noopener noreferrer" className="bot-link">
+      нажмите здесь, чтобы начать в Telegram
+    </a>
+  </p>
         </div>
 
         <div className="login-footer">
