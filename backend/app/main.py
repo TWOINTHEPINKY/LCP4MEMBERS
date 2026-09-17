@@ -1,23 +1,14 @@
-from contextlib import asynccontextmanager
-from pathlib import Path
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+# Загружаем переменные из файла .env
+load_dotenv()
+
 from .auth import router as auth_router
-from .challenges import InMemoryChallengeStore
-from .settings import get_settings
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-    app.state.settings = get_settings()
-    app.state.challenge_store = InMemoryChallengeStore()
-    yield
-
-
-app = FastAPI(title="LCP4Members Backend", lifespan=lifespan)
+app = FastAPI(title="LCP4Members Backend")
 
 # Настройка CORS: разрешаем запросы с локальной разработки и с вашего GitHub Pages
 app.add_middleware(
@@ -31,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],                   # Разрешаем все заголовки
 )
 
-# Сохраняем Widget endpoint и подключаем авторизацию через бота.
+# Подключаем роутер авторизации (тот самый /auth/telegram)
 app.include_router(auth_router)
 
 @app.get("/health")
