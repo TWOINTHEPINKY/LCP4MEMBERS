@@ -21,13 +21,50 @@ const translations = {
     featuresSubtitle: "Technologies that work for you while you focus on what matters",
     accountBtn: "Account",
     footer: "© 2026 Lizard Connor's Pipes. All rights reserved.",
-    share: "Share",
-    shareCopied: "Link copied!",
     themeChanged: "Theme changed",
+    pricingTitle: "Choose Your Plan",
+    pricingSubtitle: "Simple, transparent pricing for everyone",
+    perMonth: "/month",
+    choose: "Choose Plan",
     features: [
       { icon: CompIcon, title: "All Platforms & Speed", desc: "Lightning-fast performance across Windows, macOS, iOS, Android, and Linux with zero lag or buffering." },
       { icon: ShtIcon, title: "Strict No-logs Policy", desc: "We never store or share data about your online activity. Complete anonymity is guaranteed." },
       { icon: LizIcon, title: "Adaptive Protocol", desc: "Smart, seamless switching between protocols for maximum stability on any network." }
+    ],
+    plans: [
+      { 
+        name: "Basic", 
+        price: "299", 
+        devices: "2 devices", 
+        popular: false,
+        icon: (
+          <svg viewBox="0 0 64 64" className="plan-icon-svg">
+            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">B</text>
+          </svg>
+        )
+      },
+      { 
+        name: "Plus", 
+        price: "699", 
+        devices: "5 devices", 
+        popular: true,
+        icon: (
+          <svg viewBox="0 0 64 64" className="plan-icon-svg">
+            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">+</text>
+          </svg>
+        )
+      },
+      { 
+        name: "Pro Plus", 
+        price: "1199", 
+        devices: "10 devices", 
+        popular: false,
+        icon: (
+          <svg viewBox="0 0 64 64" className="plan-icon-svg">
+            <text x="32" y="42" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">P+</text>
+          </svg>
+        )
+      }
     ]
   },
   ru: {
@@ -37,13 +74,50 @@ const translations = {
     featuresSubtitle: "Технологии, которые работают на вас, пока вы занимаетесь своими делами",
     accountBtn: "Кабинет",
     footer: "© 2026 Lizard Connor's Pipes. Все права защищены.",
-    share: "Поделиться",
-    shareCopied: "Ссылка скопирована!",
     themeChanged: "Тема изменена",
+    pricingTitle: "Выберите тариф",
+    pricingSubtitle: "Вашему вниманию представлены 3 тарифа",
+    perMonth: "/мес",
+    choose: "Выбрать",
     features: [
       { icon: CompIcon, title: "Все платформы и скорость", desc: "Молниеносная работа на Windows, macOS, iOS, Android и Linux без задержек и буферизации." },
       { icon: ShtIcon, title: "No-logs политика", desc: "Мы никогда не храним и не передаём данные о вашей активности. Полная анонимность гарантирована." },
       { icon: LizIcon, title: "Адаптивный протокол", desc: "Умное и незаметное переключение между протоколами для максимальной стабильности в любой сети." }
+    ],
+    plans: [
+      { 
+        name: "Basic", 
+        price: "299", 
+        devices: "2 устройства", 
+        popular: false,
+        icon: (
+          <svg viewBox="0 0 64 64" className="plan-icon-svg">
+            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">B</text>
+          </svg>
+        )
+      },
+      { 
+        name: "Plus", 
+        price: "699", 
+        devices: "5 устройств", 
+        popular: true,
+        icon: (
+          <svg viewBox="0 0 64 64" className="plan-icon-svg">
+            <text x="32" y="42" textAnchor="middle" fontSize="32" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">+</text>
+          </svg>
+        )
+      },
+      { 
+        name: "Pro Plus", 
+        price: "1199", 
+        devices: "10 устройств", 
+        popular: false,
+        icon: (
+          <svg viewBox="0 0 64 64" className="plan-icon-svg">
+            <text x="32" y="42" textAnchor="middle" fontSize="28" fontWeight="700" fill="currentColor" fontFamily="Playfair Display SC, serif">P+</text>
+          </svg>
+        )
+      }
     ]
   }
 }
@@ -88,25 +162,17 @@ const GreenParticles = ({ particles }) => (
 
 const CursorTrail = () => {
   const [dots, setDots] = useState([])
-
   useEffect(() => {
     const handleMove = (e) => {
-      setDots((prev) => [
-        ...prev.slice(-15),
-        { id: Date.now() + Math.random(), x: e.clientX, y: e.clientY }
-      ])
+      setDots((prev) => [...prev.slice(-15), { id: Date.now() + Math.random(), x: e.clientX, y: e.clientY }])
     }
     window.addEventListener('mousemove', handleMove)
     return () => window.removeEventListener('mousemove', handleMove)
   }, [])
-
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((prev) => prev.slice(1))
-    }, 80)
+    const interval = setInterval(() => setDots((prev) => prev.slice(1)), 80)
     return () => clearInterval(interval)
   }, [])
-
   return (
     <div className="cursor-trail">
       {dots.map((dot, i) => (
@@ -157,7 +223,6 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Typewriter — плавнее (50ms вместо 25ms)
   useEffect(() => {
     if (!loading) {
       setTypewriterText('')
@@ -212,22 +277,12 @@ function App() {
     setTimeout(() => setParticles([]), 2200)
   }, [])
 
-  const handleShare = async () => {
-    const url = window.location.href
-    if (navigator.share) {
-      try { await navigator.share({ title: "Lizard Connor's Pipes", url }) } catch {}
-    } else {
-      await navigator.clipboard.writeText(url)
-      setToast(t.shareCopied)
-    }
-  }
-
   const handleMagneticMove = (e, ref) => {
     if (!ref.current) return
     const rect = ref.current.getBoundingClientRect()
     const x = e.clientX - rect.left - rect.width / 2
     const y = e.clientY - rect.top - rect.height / 2
-    ref.current.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`
+    ref.current.style.transform = `translate(${x * 0.05}px, ${y * 0.05}px)`
   }
   const handleMagneticLeave = (ref) => {
     if (ref.current) ref.current.style.transform = 'translate(0, 0)'
@@ -259,9 +314,9 @@ function App() {
 
         <header>
           <div className="header-inner">
-            <div className="logo" onClick={handleLogoClick} role="button" tabIndex="0" aria-label="Lizard Connor's Pipes logo">
+            <div className="logo" onClick={handleLogoClick} role="button" tabIndex="0" aria-label="LCP VPN logo">
               <div className="logo-icon"><LogoIcon className="logo-svg" /></div>
-              <span className="logo-text">LIZARD CONNOR'S PIPES</span>
+              <span className="logo-text">LCP VPN</span>
             </div>
             <div className="header-right">
               <div className="theme-switcher" role="radiogroup" aria-label="Theme selector">
@@ -272,9 +327,23 @@ function App() {
                   <MoonIcon className="theme-svg" />
                 </button>
               </div>
+              <button
+                className="lang-toggle-header magnetic-btn"
+                ref={langBtnRef}
+                onClick={toggleLanguage}
+                onMouseMove={(e) => handleMagneticMove(e, langBtnRef)}
+                onMouseLeave={() => handleMagneticLeave(langBtnRef)}
+                aria-label="Switch language"
+              >
+                <span className={lang === 'en' ? 'lang-active' : ''}>EN</span>
+                <span className="lang-divider">/</span>
+                <span className={lang === 'ru' ? 'lang-active' : ''}>RU</span>
+              </button>
               <button className="account-btn" aria-label="Account">
-                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <span>{t.accountBtn}</span>
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
               </button>
             </div>
           </div>
@@ -294,7 +363,7 @@ function App() {
             <div className="hero-buttons">
               <a
                 href="#"
-                className="btn btn-primary magnetic-btn"
+                className="btn btn-primary connect-btn magnetic-btn"
                 ref={connectBtnRef}
                 onMouseMove={(e) => handleMagneticMove(e, connectBtnRef)}
                 onMouseLeave={() => handleMagneticLeave(connectBtnRef)}
@@ -303,22 +372,6 @@ function App() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
                 <span>{t.connect}</span>
               </a>
-              <button
-                className="btn btn-secondary lang-toggle magnetic-btn"
-                ref={langBtnRef}
-                onClick={toggleLanguage}
-                onMouseMove={(e) => handleMagneticMove(e, langBtnRef)}
-                onMouseLeave={() => handleMagneticLeave(langBtnRef)}
-                aria-label="Switch language"
-              >
-                <span className={lang === 'en' ? 'lang-active' : ''}>EN</span>
-                <span className="lang-divider">/</span>
-                <span className={lang === 'ru' ? 'lang-active' : ''}>RU</span>
-              </button>
-              <button className="btn btn-secondary share-btn" onClick={handleShare} aria-label="Share site">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                <span>{t.share}</span>
-              </button>
             </div>
           </div>
         </section>
@@ -345,6 +398,35 @@ function App() {
                 </div>
               )
             })}
+          </div>
+        </section>
+
+        <section className="pricing">
+          <div className="section-header fade-in">
+            <h2>{t.pricingTitle}</h2>
+            <p>{t.pricingSubtitle}</p>
+          </div>
+          <div className="pricing-grid">
+            {t.plans.map((plan, i) => (
+              <div
+                key={i}
+                className={`pricing-card fade-in tilt-card ${plan.popular ? 'popular' : ''}`}
+                onMouseMove={handleTiltMove}
+                onMouseLeave={handleTiltLeave}
+              >
+                {plan.popular && <div className="popular-badge">Popular</div>}
+                <div className="pricing-icon">{plan.icon}</div>
+                <h3 className="plan-name">{plan.name}</h3>
+                <div className="plan-price">
+                  <span className="price">{plan.price}₽</span>
+                  <span className="period">{t.perMonth}</span>
+                </div>
+                <p className="plan-devices">{plan.devices}</p>
+                <button className="btn btn-primary plan-btn">
+                  {t.choose}
+                </button>
+              </div>
+            ))}
           </div>
         </section>
 
