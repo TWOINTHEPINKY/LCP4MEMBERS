@@ -65,3 +65,36 @@ Desktop.ini
 # =========================
 
 *.log
+
+# =========================
+# PRIVATE KEYS / CERTIFICATES
+# =========================
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# =========================
+# CREDENTIAL FILES
+# =========================
+
+credentials.json
+credentials*.json
+service-account*.json
+service_account*.json
+secrets.json
+secrets*.json
+
+# =========================
+# LOCAL DATABASE / STATE
+# =========================
+
+*.sqlite
+*.sqlite3
+*.db
