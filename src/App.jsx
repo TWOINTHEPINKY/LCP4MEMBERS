@@ -25,6 +25,10 @@ const translations = {
     accountBtn: "Account",
     footer: "© 2026 Lizard Connor's Pipes. All rights reserved.",
     themeChanged: "Theme changed",
+    switchToLight: "Switch to light theme",
+    switchToDark: "Switch to dark theme",
+    switchLanguage: "Switch to Russian",
+    scrollToTop: "Scroll to top",
     pricingTitle: "Choose Your Plan",
     pricingSubtitle: "Simple, transparent pricing for everyone",
     perMonth: "/month",
@@ -48,6 +52,10 @@ const translations = {
     accountBtn: "Кабинет",
     footer: "© 2026 Lizard Connor's Pipes. Все права защищены.",
     themeChanged: "Тема изменена",
+    switchToLight: "Переключить на светлую тему",
+    switchToDark: "Переключить на тёмную тему",
+    switchLanguage: "Переключить на английский",
+    scrollToTop: "Наверх",
     pricingTitle: "Выберите тариф",
     pricingSubtitle: "Вашему вниманию представлены 3 тарифа",
     perMonth: "/мес",
@@ -192,12 +200,12 @@ function App() {
   const [isTyping, setIsTyping] = useState(true)
   
   const connectBtnRef = useRef(null)
-  const langBtnRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
   const t = translations[lang]
   const fullText = t.slogan
+  const themeToggleLabel = theme === 'dark' ? t.switchToLight : t.switchToDark
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme)
@@ -219,6 +227,11 @@ function App() {
 
   useEffect(() => {
     if (!loading) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setTypewriterText(fullText)
+        setIsTyping(false)
+        return
+      }
       setTypewriterText('')
       setIsTyping(true)
       let i = 0
@@ -255,7 +268,10 @@ function App() {
     setToast(t.themeChanged)
   }
 
-  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+  const scrollToTop = () => window.scrollTo({
+    top: 0,
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+  })
 
   const handleLogoClick = useCallback((e) => {
     e.preventDefault()
@@ -309,37 +325,37 @@ function App() {
 
         <header>
           <div className="header-inner">
-            <div className="logo" onClick={handleLogoClick} role="button" tabIndex="0" aria-label="LCP VPN logo">
-              <div className="logo-icon"><LogoIcon className="logo-svg" /></div>
+            <button type="button" className="logo" onClick={handleLogoClick} aria-label="LCP VPN logo">
+              <span className="logo-icon"><LogoIcon className="logo-svg" aria-hidden="true" /></span>
               <span className="logo-text">LCP VPN</span>
-            </div>
+            </button>
             <div className="header-right">
-              <div className="theme-switcher" role="radiogroup" aria-label="Theme selector">
-                <button className={`theme-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => handleThemeChange('light')} title="Light Theme" aria-label="Light theme" role="radio" aria-checked={theme === 'light'}>
-                  <SunIcon className="theme-svg" />
-                </button>
-                <button className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => handleThemeChange('dark')} title="Dark Theme" aria-label="Dark theme" role="radio" aria-checked={theme === 'dark'}>
-                  <MoonIcon className="theme-svg" />
-                </button>
-              </div>
               <button
-                className="lang-toggle-header magnetic-btn"
-                ref={langBtnRef}
+                type="button"
+                className="header-control lang-toggle-header"
                 onClick={toggleLanguage}
-                onMouseMove={(e) => handleMagneticMove(e, langBtnRef)}
-                onMouseLeave={() => handleMagneticLeave(langBtnRef)}
-                aria-label="Switch language"
+                aria-label={t.switchLanguage}
+                title={t.switchLanguage}
               >
-                <span className={lang === 'en' ? 'lang-active' : ''}>EN</span>
-                <span className="lang-divider">/</span>
-                <span className={lang === 'ru' ? 'lang-active' : ''}>RU</span>
+                {lang.toUpperCase()}
               </button>
-              
-              {/* ОБНОВЛЕННАЯ КНОПКА КАБИНЕТА */}
-              <button 
-                className="account-btn" 
+              <button
+                type="button"
+                className="header-control theme-btn"
+                onClick={() => handleThemeChange(theme === 'dark' ? 'light' : 'dark')}
+                title={themeToggleLabel}
+                aria-label={themeToggleLabel}
+              >
+                {theme === 'dark'
+                  ? <SunIcon className="theme-svg" aria-hidden="true" />
+                  : <MoonIcon className="theme-svg" aria-hidden="true" />}
+              </button>
+              <button
+                type="button"
+                className="header-control account-btn"
                 onClick={() => navigate('/account')}
-                aria-label="Account"
+                aria-label={t.accountBtn}
+                title={t.accountBtn}
               >
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -366,9 +382,9 @@ function App() {
           <Route path="/account" element={<Account lang={lang} />} />
         </Routes>
 
-        <div className={`scroll-to-top ${showScrollTop ? 'visible' : 'hidden'}`} onClick={scrollToTop} role="button" tabIndex="0" aria-label="Scroll to top">
+        <button type="button" className={`scroll-to-top ${showScrollTop ? 'visible' : 'hidden'}`} onClick={scrollToTop} aria-label={t.scrollToTop} title={t.scrollToTop}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-        </div>
+        </button>
 
         <footer>
           <p>{t.footer}</p>
