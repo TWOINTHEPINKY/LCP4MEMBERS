@@ -1,4 +1,4 @@
-const API_URL = (import.meta.env.VITE_API_URL || 'http://82.27.77.44:8000').trim().replace(/\/+$/, '')
+const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')).trim().replace(/\/+$/, '')
 const TOKEN_KEY = 'lcp_access_token'
 const CHALLENGE_KEY = 'lcp_login_challenge'
 
