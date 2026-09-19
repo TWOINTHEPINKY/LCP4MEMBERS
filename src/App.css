@@ -898,21 +898,6 @@ footer p { color: var(--moss-text-muted); font-size: 0.9rem; }
   .scroll-to-top:hover { box-shadow: 0 0 20px var(--moss-glow); }
 }
 
-/* Only the ordinary-browser dashboard collapses its visible header on scroll. */
-.dashboard-browser-header .header-inner {
-  transition: opacity 220ms ease, transform 220ms ease;
-}
-.dashboard-browser-header::before { transition: bottom 220ms ease; }
-.dashboard-browser-header[data-hidden="true"] { pointer-events: none; }
-.dashboard-browser-header[data-hidden="true"] .header-inner {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-.dashboard-browser-header[data-hidden="true"]::before {
-  bottom: calc(100% - var(--safe-area-inset-top) - 18px);
-  --header-blur-mask: linear-gradient(#000, transparent);
-}
-
 /* Reduced motion: retain content and controls, remove decorative movement. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

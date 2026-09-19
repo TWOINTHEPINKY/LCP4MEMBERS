@@ -20,7 +20,7 @@ export default function Dashboard({ user, lang, profileControls }) {
     <main className="dashboard-page" aria-labelledby="dashboard-title">
       <div className="dashboard-inner">
         <h1 id="dashboard-title" className="dashboard-title">{text.title}</h1>
-        <section className={`dashboard-profile dashboard-glass${profileControls ? ' dashboard-profile--telegram' : ''}`} aria-label={text.telegramAccount}>
+        <section className={`dashboard-profile dashboard-glass${profileControls ? ' dashboard-profile--settings' : ''}`} aria-label={text.telegramAccount}>
           <div className="dashboard-avatar" aria-hidden="true">{Array.from(user.first_name || '')[0]}</div>
           <div className="dashboard-identity">
             <h2>{displayName}</h2>
