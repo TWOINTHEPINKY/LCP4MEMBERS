@@ -6,7 +6,7 @@ function callSafely(webApp, method) {
       Promise.resolve(webApp[method]()).catch(() => {})
     }
   } catch {
-    // Fullscreen/expansion is optional; unsupported clients keep the normal UI.
+    // Optional bridge calls must not break initialization on unsupported clients.
   }
 }
 
@@ -22,5 +22,6 @@ export function initializeTelegramWebApp() {
 
   callSafely(webApp, 'ready')
   callSafely(webApp, 'expand')
+  callSafely(webApp, 'disableVerticalSwipes')
   if (webApp.isFullscreen !== true) callSafely(webApp, 'requestFullscreen')
 }

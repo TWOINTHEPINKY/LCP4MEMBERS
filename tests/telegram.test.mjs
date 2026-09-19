@@ -15,6 +15,7 @@ function install(overrides = {}) {
     platform: 'ios',
     ready() { assert.equal(this, webApp); calls.push('ready') },
     expand() { assert.equal(this, webApp); calls.push('expand') },
+    disableVerticalSwipes() { assert.equal(this, webApp); calls.push('disableVerticalSwipes') },
     requestFullscreen() { assert.equal(this, webApp); calls.push('fullscreen') },
     ...overrides,
   }
@@ -37,28 +38,28 @@ test('SDK loaded outside Telegram does not issue bridge calls', () => {
   assert.deepEqual(calls, [])
 })
 
-test('Telegram startup calls ready, expand and fullscreen in order', () => {
+test('Telegram startup calls ready, expand, swipe disable and fullscreen in order', () => {
   const { calls } = install()
   initializeTelegramWebApp()
-  assert.deepEqual(calls, ['ready', 'expand', 'fullscreen'])
+  assert.deepEqual(calls, ['ready', 'expand', 'disableVerticalSwipes', 'fullscreen'])
 })
 
 test('fullscreen launch still signals readiness and expands without another request', () => {
   const { calls } = install({ isFullscreen: true })
   initializeTelegramWebApp()
-  assert.deepEqual(calls, ['ready', 'expand'])
+  assert.deepEqual(calls, ['ready', 'expand', 'disableVerticalSwipes'])
 })
 
 test('legacy Telegram without requestFullscreen retains expansion', () => {
   const { calls } = install({ requestFullscreen: undefined })
   assert.doesNotThrow(initializeTelegramWebApp)
-  assert.deepEqual(calls, ['ready', 'expand'])
+  assert.deepEqual(calls, ['ready', 'expand', 'disableVerticalSwipes'])
 })
 
 test('missing expand still allows readiness and fullscreen', () => {
   const { calls } = install({ expand: undefined })
   initializeTelegramWebApp()
-  assert.deepEqual(calls, ['ready', 'fullscreen'])
+  assert.deepEqual(calls, ['ready', 'disableVerticalSwipes', 'fullscreen'])
 })
 
 test('fullscreen exception is harmless and is not retried by repeated initialization', () => {
@@ -66,7 +67,7 @@ test('fullscreen exception is harmless and is not retried by repeated initializa
   const { calls } = install({ requestFullscreen() { requests++; throw new Error('unsupported') } })
   assert.doesNotThrow(initializeTelegramWebApp)
   assert.doesNotThrow(initializeTelegramWebApp)
-  assert.deepEqual(calls, ['ready', 'expand'])
+  assert.deepEqual(calls, ['ready', 'expand', 'disableVerticalSwipes'])
   assert.equal(requests, 1)
 })
 
@@ -82,14 +83,14 @@ test('repeated or reentrant initialization never duplicates startup calls', () =
   initializeTelegramWebApp()
   initializeTelegramWebApp()
   initializeTelegramWebApp()
-  assert.deepEqual(calls, ['ready', 'expand'])
+  assert.deepEqual(calls, ['ready', 'expand', 'disableVerticalSwipes'])
   assert.equal(requests, 1)
 })
 
 test('optional bridge method failure does not prevent other startup calls', () => {
   const { calls } = install({ ready() { throw new Error('bridge unavailable') } })
   assert.doesNotThrow(initializeTelegramWebApp)
-  assert.deepEqual(calls, ['expand', 'fullscreen'])
+  assert.deepEqual(calls, ['expand', 'disableVerticalSwipes', 'fullscreen'])
 })
 
 test('browser no-op does not prevent initialization after Telegram becomes available', () => {
@@ -97,5 +98,42 @@ test('browser no-op does not prevent initialization after Telegram becomes avail
   initializeTelegramWebApp()
   webApp.platform = 'android'
   initializeTelegramWebApp()
+  assert.deepEqual(calls, ['ready', 'expand', 'disableVerticalSwipes', 'fullscreen'])
+})
+
+test('legacy Telegram without disableVerticalSwipes retains fullscreen initialization', () => {
+  const { calls } = install({ disableVerticalSwipes: undefined })
+  assert.doesNotThrow(initializeTelegramWebApp)
   assert.deepEqual(calls, ['ready', 'expand', 'fullscreen'])
+})
+
+test('swipe-disable exception does not block fullscreen and is not retried', () => {
+  let requests = 0
+  const { calls } = install({ disableVerticalSwipes() { requests++; throw new Error('unsupported') } })
+  assert.doesNotThrow(initializeTelegramWebApp)
+  assert.doesNotThrow(initializeTelegramWebApp)
+  assert.deepEqual(calls, ['ready', 'expand', 'fullscreen'])
+  assert.equal(requests, 1)
+})
+
+test('asynchronous swipe-disable rejection is harmless and does not block fullscreen', async () => {
+  let requests = 0
+  const { calls } = install({ disableVerticalSwipes() { requests++; return Promise.reject(new Error('denied')) } })
+  assert.doesNotThrow(initializeTelegramWebApp)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.doesNotThrow(initializeTelegramWebApp)
+  assert.deepEqual(calls, ['ready', 'expand', 'fullscreen'])
+  assert.equal(requests, 1)
+})
+
+test('reentry during swipe disable and repeated initialization do not duplicate calls', () => {
+  const { calls } = install({
+    disableVerticalSwipes() {
+      calls.push('disableVerticalSwipes')
+      initializeTelegramWebApp()
+    },
+  })
+  initializeTelegramWebApp()
+  initializeTelegramWebApp()
+  assert.deepEqual(calls, ['ready', 'expand', 'disableVerticalSwipes', 'fullscreen'])
 })
