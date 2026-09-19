@@ -19,7 +19,7 @@ export default function Login({ lang }) {
     authenticateTelegramWebApp(initData).then(result => {
       if (!active) return
       try { saveToken(result.access_token) } catch { throw new ApiError('storage') }
-      navigate('/account', { replace: true })
+      navigate('/app', { replace: true })
     }).catch(error => {
       if (active) setPhase(telegramAuthError(error))
     })
@@ -62,7 +62,7 @@ export default function Login({ lang }) {
             return
           }
           rememberChallenge(null)
-          navigate('/account', { replace: true })
+          navigate('/app', { replace: true })
         } else {
           finish(['cancelled', 'expired'].includes(result.status) ? result.status : 'backend')
         }

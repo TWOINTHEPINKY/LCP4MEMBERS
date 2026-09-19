@@ -47,7 +47,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         self.bot = Bot(token="987654:" + secrets.token_urlsafe(32), session=self.session)
         self.user = User(id=123456, is_bot=False, first_name="Test", username="tester")
         self.settings = Settings(bot_token=self.bot.token, bot_internal_secret=secrets.token_urlsafe(32),
-            web_app_url="https://twointhepinky.github.io/LCP4MEMBERS",
+            web_app_url="https://lcpn3twork.com",
             support_telegram_url="https://t.me/support_test", admin_ids=frozenset({123456}))
         self.enterContext(patch("keyboards.main_keyboard.get_settings", return_value=self.settings))
 
@@ -121,10 +121,10 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             await self.feed_callback("auth:yes:" + "a" * 32, self.message(chat_id=999))
             submit.assert_not_awaited()
 
-    def test_keyboard_hash_routes(self):
+    def test_keyboard_clean_routes(self):
         self.assertEqual(get_main_keyboard().inline_keyboard[0][0].web_app.url,
-                         "https://twointhepinky.github.io/LCP4MEMBERS/#/login")
-        self.assertEqual(get_menu_button().web_app.url, "https://twointhepinky.github.io/LCP4MEMBERS/#/account")
+                         "https://lcpn3twork.com/login")
+        self.assertEqual(get_menu_button().web_app.url, "https://lcpn3twork.com/app")
 
 
 class AuthClientTests(unittest.IsolatedAsyncioTestCase):
@@ -168,13 +168,16 @@ class AuthClientTests(unittest.IsolatedAsyncioTestCase):
 class SettingsTests(unittest.TestCase):
     def test_admins_and_base_url_preserved_and_secrets_validated(self):
         values = {"BOT_TOKEN": secrets.token_urlsafe(32), "BOT_INTERNAL_SECRET": secrets.token_urlsafe(32),
-            "WEB_APP_URL": "https://twointhepinky.github.io/LCP4MEMBERS",
+            "WEB_APP_URL": "https://lcpn3twork.com/",
             "SUPPORT_TELEGRAM_URL": "https://t.me/support_test", "ADMIN_IDS": "123,456"}
         with patch("config.settings.dotenv_values", return_value=values):
             get_settings.cache_clear()
             settings = get_settings()
             self.assertEqual(settings.admin_ids, frozenset({123, 456}))
             self.assertEqual(settings.backend_internal_url, "http://127.0.0.1:8000")
+            self.assertEqual(settings.web_app_url, "https://lcpn3twork.com")
+            self.assertEqual(settings.web_url("/login"), "https://lcpn3twork.com/login")
+            self.assertEqual(settings.web_url("/app"), "https://lcpn3twork.com/app")
             values["BOT_INTERNAL_SECRET"] = values["BOT_TOKEN"]
             get_settings.cache_clear()
             with self.assertRaises(ConfigurationError):

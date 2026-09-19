@@ -1,17 +1,21 @@
 # LCP4MEMBERS
 
 Монорепозиторий: React + Vite (`src/`), FastAPI (`backend/`), aiogram 3 (`bot/`).
-Сайт: https://twointhepinky.github.io/LCP4MEMBERS/
+Сайт: https://lcpn3twork.com/
+
+Маршруты через BrowserRouter: `/` — публичная главная, `/login` — вход, `/app` — текущий технический кабинет. Прямое открытие и обновление страниц поддерживает существующий Nginx SPA fallback: `try_files $uri $uri/ /index.html`. Vite собирается для корня `/`; дополнительный `--base=/` не нужен.
+
+Старые ссылки `https://lcpn3twork.com/#/account` и `https://lcpn3twork.com/#/login` перед запуском роутера заменяются через `history.replaceState` на `/app` и `/login`; query сохраняется, маршрут в hash удаляется. Преобразуются только эти точные hash-маршруты на корне сайта; прочие anchors и Telegram launch data не меняются. Чистый `/account` перенаправляется на `/app` с заменой записи истории.
 
 ## Авторизация через Telegram
 
-1. `/#/login` вызывает `POST /auth/bot/start`.
+1. `/login` вызывает `POST /auth/bot/start`.
 2. Backend создаёт случайный `login_id` (192 бита), отдельный `browser_token` (256 бит) и challenge на 5 минут.
 3. Браузер сохраняет challenge в `sessionStorage` своей вкладки и открывает `https://t.me/connorsvpn_bot?start=login_<login_id>`. Если popup заблокирован, есть явная ссылка «Открыть Telegram».
 4. Бот показывает «Подтвердить вход в LCP?» и кнопки «✅ Да, войти» / «❌ Нет». Обычный `/start` сохраняет приветствие с изображением.
 5. Бот передаёт решение и данные `callback.from_user` в backend с `X-Bot-Internal-Secret`.
 6. Браузер опрашивает статус примерно каждые 2 секунды с `X-Login-Token: <browser_token>`. Этот ключ не передаётся Telegram. Один `login_id` не позволяет получить JWT.
-7. Первый успешный запрос статуса получает JWT на 30 дней; challenge атомарно переходит в `consumed`. JWT сохраняется в `localStorage`, открывается `/#/account`, профиль загружается через `/auth/me`.
+7. Первый успешный запрос статуса получает JWT на 30 дней; challenge атомарно переходит в `consumed`. JWT сохраняется в `localStorage`, открывается `/app`, профиль загружается через `/auth/me`.
 
 Повторные подтверждения/отмены запрещены; Telegram-пользователь после подтверждения не может быть заменён. Polling не перекрывается, имеет timeout запроса, очищается при unmount и останавливается при результате, ошибке или истечении TTL. Незавершённый вход можно продолжить после обновления исходной вкладки в пределах TTL.
 
@@ -28,14 +32,18 @@
 | `bot/.env` | `BOT_TOKEN` | Токен того же бота |
 | `bot/.env` | `BOT_INTERNAL_SECRET` | Точное совпадение с backend |
 | `bot/.env` | `BACKEND_INTERNAL_URL` | `http://127.0.0.1:8000` для локального запуска |
-| `bot/.env` | `WEB_APP_URL` | `https://twointhepinky.github.io/LCP4MEMBERS`, без завершающего hash/query |
+| `bot/.env` | `WEB_APP_URL` | `https://lcpn3twork.com`, без пути, hash/query |
 | `bot/.env` | `SUPPORT_TELEGRAM_URL` | Существующая ссылка поддержки `https://t.me/<username>` |
 | `bot/.env` | `ADMIN_IDS` | Существующие числовые ID через запятую; пустое значение отключает админку |
-| `.env` (корень) | `VITE_API_URL` | Публичный адрес backend; локально `http://localhost:8000` |
+| `.env` (корень) | `VITE_API_URL` | В production `/api` на том же домене; локально `http://localhost:8000` |
 
 Для каждого нового секрета отдельно выполните `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`. Не используйте BOT_TOKEN вместо internal/JWT secret. Backend явно отказывается запускаться без обязательных секретов, с короткими или совпадающими секретами. Бот читает настройки только из `bot/.env`, как и прежде. Backend читает `backend/.env`, при этом переменные окружения имеют приоритет.
 
-`VITE_API_URL` не секрет: Vite включает его в frontend при сборке. В dev доступен fallback `http://localhost:8000`; в production fallback отсутствует, и при пустой настройке UI сообщает о недоступной конфигурации. Для GitHub Pages задайте repository variable `VITE_API_URL` с HTTPS-адресом backend до следующей сборки; workflow уже передаёт эту переменную в Vite.
+`VITE_API_URL` не секрет: Vite включает его в frontend при сборке. В dev доступен fallback `http://localhost:8000`; в production fallback отсутствует, и при пустой настройке UI сообщает о недоступной конфигурации. Для production задайте `VITE_API_URL=/api` при обычной сборке `npm run build`; API и frontend доступны на `https://lcpn3twork.com`.
+
+Бот формирует кнопку входа с `/login` и кнопку меню «Кабинет» с `/app`. При последующем обновлении production проверьте `WEB_APP_URL` в существующем `bot/.env`; после перезапуска бот установит новое default menu через `set_chat_menu_button`. Если URL Mini App отдельно задан в BotFather, обновите его на `https://lcpn3twork.com/app`. Старые сообщения на текущем домене поддерживаются редиректами выше. Ссылки на прежний GitHub Pages origin требуют отдельного перенаправления на том хостинге.
+
+Старый `.github/workflows/deploy.yml` для GitHub Pages сохранён без изменений и по-прежнему настроен на push в `main`; это не способ публикации текущего production-домена. Его отключение или замена — отдельная задача.
 
 ## Локальный запуск
 
@@ -69,7 +77,7 @@ npm ci
 npm run dev -- --host localhost
 ```
 
-Откройте `http://localhost:5173/LCP4MEMBERS/#/login`. В локальном сценарии сайт открывайте непосредственно в браузере: HTTPS-кнопки Telegram продолжают вести на GitHub Pages. Для локального теста весь frontend на GitHub Pages или HTTPS-туннель не требуются: локальный бот получает updates через исходящее соединение с Telegram, а backend доступен ему по loopback.
+Откройте `http://localhost:5173/login`. В локальном сценарии сайт открывайте непосредственно в браузере: HTTPS-кнопки Telegram ведут на домен из `WEB_APP_URL` (production — `https://lcpn3twork.com`). Для локального browser challenge login публикация frontend и HTTPS-туннель не требуются: локальный бот получает updates через исходящее соединение с Telegram, а backend доступен ему по loopback.
 
 ## API
 
@@ -88,16 +96,17 @@ npm run dev -- --host localhost
 ## Ручная проверка
 
 1. Заполните локальные env-настройки; запустите backend, bot, frontend. Проверьте `/health`.
-2. Откройте `http://localhost:5173/LCP4MEMBERS/#/login`. При необходимости переключите язык на RU.
+2. Откройте `http://localhost:5173/login`. При необходимости переключите язык на RU.
 3. Нажмите «Войти через Telegram». Должны появиться состояния «Откройте Telegram и подтвердите вход» / «Ожидаем подтверждение…». Если отдельная вкладка не открылась, нажмите «Открыть Telegram».
 4. В Telegram нажмите Start/«Запустить», если клиент предлагает его, затем «✅ Да, войти».
-5. Вернитесь именно в исходную вкладку сайта. В течение очередного опроса должен открыться `/#/account` с именем, username (если есть) и Telegram ID.
-6. Обновите кабинет: профиль должен повторно загрузиться через `/auth/me`. Нажмите «Выйти»: токен удаляется, открывается login. Прямое открытие account без токена также приводит на login.
+5. Вернитесь именно в исходную вкладку сайта. В течение очередного опроса должен открыться `/app` с именем, username (если есть) и Telegram ID.
+6. Обновите кабинет: профиль должен повторно загрузиться через `/auth/me`. Нажмите «Выйти»: токен удаляется, открывается `/login`. Прямое открытие `/app` без токена в обычном браузере также приводит на `/login`.
 7. Начните новый вход и нажмите «❌ Нет»: сайт показывает «Вход отменён», доступна новая попытка.
 8. Начните новый вход и подождите больше 5 минут: сайт показывает истечение ссылки; подтверждение старой ссылки больше не работает.
 9. Повторно нажмите кнопку на старом сообщении/откройте старую ссылку: повторный вход или смена Telegram ID запрещены.
 10. Остановите локальный backend и попробуйте вход: UI показывает сетевую ошибку; обычный `/start`, поддержка, «О нас», `/admin` для ADMIN_IDS продолжают работать у запущенного бота.
-11. После публикации сборки с настроенным API проверьте прямое открытие и обновление `https://twointhepinky.github.io/LCP4MEMBERS/#/login` и `/#/account`. HashRouter не отправляет маршрут страницы серверу GitHub Pages; basename роутера не нужен, Vite base остаётся `/LCP4MEMBERS/`.
+11. При следующей публикации сборки с `VITE_API_URL=/api` проверьте прямое открытие и обновление `https://lcpn3twork.com/login` и `https://lcpn3twork.com/app`. Существующий Nginx SPA fallback должен отдавать `index.html` для этих путей, сохраняя отдельную обработку `/api`.
+12. Проверьте старые `/#/account`, `/#/login` и `/account`: адрес должен стать чистым `/app` или `/login` (без токена кабинет в браузере затем отправит на `/login`). В Telegram проверьте вход через обе новые кнопки и старые сообщения: Mini App auth должен завершаться на `/app`.
 
 ## Автоматические проверки
 
@@ -107,6 +116,7 @@ npm run dev -- --host localhost
 backend/.venv/bin/python -m compileall -q backend/app backend/tests bot/main.py bot/auth_client.py bot/config bot/handlers bot/keyboards bot/texts bot/tests
 backend/.venv/bin/python -c 'from backend.app.main import app; print(app.title)'
 backend/.venv/bin/python -m unittest discover -s backend/tests -v
+node --test tests/routing.test.mjs tests/auth.test.mjs tests/telegram.test.mjs
 npm run build
 npm run lint
 git diff --check
@@ -119,7 +129,7 @@ git diff --check
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Backend-тесты изолируют `.env`, проверяют полный обмен на JWT, владение challenge, TTL, отмену, гонки, replay, невалидные токены, CORS и Widget. Bot-тесты используют настоящий dispatcher и подменяют Telegram API: внешние сообщения не отправляются. Отдельный ручной тест с реальным Telegram необходим перед production.
+Backend-тесты изолируют `.env`, проверяют полный обмен на JWT, владение challenge, TTL, отмену, гонки, replay, невалидные токены, CORS и Widget. Bot-тесты используют настоящий dispatcher и подменяют Telegram API: внешние сообщения не отправляются. Для браузерных проверок реальных Login/Account компонентов откройте `http://localhost:5173/tests/telegram-auth.html` на dev-сервере: backend и хранилище там подменены тестовыми. Отдельный ручной тест с реальным Telegram необходим перед production.
 
 ## Ограничения и TODO
 
@@ -127,7 +137,7 @@ Backend-тесты изолируют `.env`, проверяют полный о
 - В выдаче JWT действует at-most-once: если ответ с токеном потерян после consumption, начать вход заново. Автоматически перевыдавать JWT по consumed ID нельзя.
 - JWT пока хранится в localStorage. После размещения frontend/backend на одном production-домене перейти на Secure HttpOnly cookie с CSRF-защитой. Logout удаляет локальный токен; отзыва уже выданного JWT и refresh-сессий пока нет.
 - Добавить rate limiting на создание/опрос и внутренние endpoints, аудит без секретов, распределённое хранилище и управление сессиями. Сейчас есть только общий лимит записей в памяти.
-- Публичный API для GitHub Pages должен работать по HTTPS. Internal endpoints ограничить сетью/reverse proxy; вне loopback использовать HTTPS. Исключить JWT, browser/internal secret, URL challenge из логов proxy/APM.
+- Публичный API доступен по HTTPS на `https://lcpn3twork.com/api`. Internal endpoints ограничить сетью/reverse proxy; вне loopback использовать HTTPS. Исключить JWT, browser/internal secret, URL challenge из логов proxy/APM.
 - Подтверждать только собственную попытку входа. Защита от пересылки ссылки/социальной инженерии требует дополнительного UX (например, сверяемый код в браузере и боте).
 - Telegram WebView и внешний браузер имеют раздельное хранилище: завершать вход следует в той вкладке, где он был начат. Наличие Telegram ID само по себе не заменяет этот обмен.
 

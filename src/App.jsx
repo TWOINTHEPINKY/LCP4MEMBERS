@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
 
 import LogoIcon from './assets/icons/logo.svg?react'
@@ -353,7 +353,7 @@ function App() {
               <button
                 type="button"
                 className="header-control account-btn"
-                onClick={() => navigate('/account')}
+                onClick={() => navigate('/app')}
                 aria-label={t.accountBtn}
                 title={t.accountBtn}
               >
@@ -379,7 +379,8 @@ function App() {
           <Route path="/login" element={
             <Login lang={lang} />
           } />
-          <Route path="/account" element={<Account lang={lang} />} />
+          <Route path="/app" element={<Account lang={lang} />} />
+          <Route path="/account" element={<Navigate to="/app" replace />} />
         </Routes>
 
         <button type="button" className={`scroll-to-top ${showScrollTop ? 'visible' : 'hidden'}`} onClick={scrollToTop} aria-label={t.scrollToTop} title={t.scrollToTop}>
