@@ -1,8 +1,10 @@
 import hashlib
 import hmac
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -28,6 +30,10 @@ class TelegramAuthRequest(TelegramUser):
     photo_url: str | None = None
     auth_date: int
     hash: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
+
+
+class TelegramWebAppRequest(BaseModel):
+    init_data: str = Field(strict=True, min_length=1, max_length=16384)
 
 
 class BotDecisionRequest(TelegramUser):
@@ -61,6 +67,38 @@ def verify_telegram_auth(data: dict, bot_token: str) -> bool:
     return -30 <= age <= 86400
 
 
+def verify_telegram_webapp(init_data: str, bot_token: str) -> TelegramUser | None:
+    """Verify the signed raw query string before decoding or trusting its user."""
+    try:
+        if re.search(r"%(?![0-9a-fA-F]{2})", init_data):
+            return None
+        pairs = parse_qsl(init_data, keep_blank_values=True, strict_parsing=True,
+                          errors="strict", max_num_fields=32)
+        data = dict(pairs)
+        # Reject ambiguous fields instead of silently keeping the last occurrence.
+        if len(data) != len(pairs) or any(
+            not re.fullmatch(r"[A-Za-z0-9_]+", key) or "\n" in value or "\r" in value
+            for key, value in pairs
+        ):
+            return None
+        received_hash = data.pop("hash", "")
+        if not re.fullmatch(r"[a-f0-9]{64}", received_hash):
+            return None
+        check_string = "\n".join(f"{key}={data[key]}" for key in sorted(data))
+        secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
+        expected_hash = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected_hash, received_hash):
+            return None
+        if not re.fullmatch(r"[0-9]+", data.get("auth_date", "")):
+            return None
+        age = time.time() - int(data["auth_date"])
+        if not -30 <= age <= 86400:
+            return None
+        return TelegramUser.model_validate_json(data["user"])
+    except (ValueError, KeyError, OverflowError, RecursionError):
+        return None
+
+
 def token_response(user: TelegramUser, settings: Settings) -> dict:
     now = datetime.now(timezone.utc)
     token = jwt.encode(
@@ -86,6 +124,23 @@ async def telegram_login(user_data: TelegramAuthRequest, response: Response,
     if not verify_telegram_auth(user_data.model_dump(exclude_none=True), settings.bot_token):
         raise HTTPException(status_code=401, detail="Неверная подпись Telegram. Доступ запрещен.")
     return token_response(TelegramUser.model_validate(user_data.model_dump()), settings)
+
+
+@router.post("/telegram-webapp")
+async def telegram_webapp_login(request: Request, response: Response,
+                                settings: Annotated[Settings, Depends(settings_for)]):
+    no_store(response)
+    # Validate manually so malformed bodies also get a safe 401, without Pydantic
+    # echoing credential material in a default request-validation response.
+    try:
+        payload = TelegramWebAppRequest.model_validate(await request.json())
+        user = verify_telegram_webapp(payload.init_data, settings.bot_token)
+    except (ValueError, RecursionError):
+        user = None
+    if user is None:
+        raise HTTPException(401, detail="invalid_telegram_webapp_data",
+                            headers={"Cache-Control": "no-store", "Pragma": "no-cache"})
+    return token_response(user, settings)
 
 
 @router.post("/bot/start")

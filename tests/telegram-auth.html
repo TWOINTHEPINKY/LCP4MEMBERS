@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Telegram authentication regression checks</title></head>
+<body>
+  <!-- Open /LCP4MEMBERS/tests/telegram-auth.html on the Vite dev server.
+       Uses real Login/Account components in StrictMode, with isolated fake storage
+       and a fake backend. No bot, production credentials or external API calls. -->
+  <pre id="results">Running…</pre>
+  <div id="fixture"></div>
+  <script type="module">
+    import { createElement as h, StrictMode } from 'react'
+    import { createRoot } from 'react-dom/client'
+    import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
+    import Login from '../src/pages/Login.jsx'
+    import Account from '../src/pages/Account.jsx'
+
+    const host = document.querySelector('#fixture')
+    const results = []
+    const tokenKey = 'lcp_access_token'
+    const challengeKey = 'lcp_login_challenge'
+    const profile = { id: 123456, first_name: 'Test User', username: 'test_user', last_name: null }
+    const raw = 'query_id=fixture%2Bvalue&user=%7B%7D&hash=test-only'
+    let root, config, requests, popups, locations, currentPath, blockStorage
+    const storage = () => {
+      const data = new Map()
+      return {
+        getItem: key => data.get(key) ?? null,
+        setItem: (key, value) => {
+          if (blockStorage) throw new DOMException('Test storage failure', 'QuotaExceededError')
+          data.set(key, String(value))
+        },
+        removeItem: key => data.delete(key),
+      }
+    }
+    const pause = ms => new Promise(resolve => setTimeout(resolve, ms))
+    const assert = (condition, label) => { if (!condition) throw new Error(label) }
+    async function waitFor(condition, label) {
+      for (let i = 0; i < 160; i++) {
+        if (condition()) return
+        await pause(25)
+      }
+      throw new Error(`Timed out: ${label}`)
+    }
+    function Probe() {
+      currentPath = useLocation().pathname
+      locations.push(currentPath)
+      return null
+    }
+    const count = path => requests.filter(request => request.path === path).length
+    const click = label => {
+      const button = [...host.querySelectorAll('button')].find(element => element.textContent === label)
+      assert(button, `Missing button: ${label}`)
+      button.click()
+    }
+    async function mount(path, options = {}) {
+      root?.unmount()
+      await pause(100)
+      config = options
+      requests = []; popups = []; locations = []; blockStorage = false
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: storage() })
+      Object.defineProperty(window, 'sessionStorage', { configurable: true, value: storage() })
+      if (options.token) localStorage.setItem(tokenKey, options.token)
+      if (options.challenge) sessionStorage.setItem(challengeKey, JSON.stringify({
+        login_id: 'a'.repeat(32), browser_token: 'fixture-browser-token', expiresAt: Date.now() + 300000,
+      }))
+      blockStorage = Boolean(options.blockStorage)
+      window.Telegram = options.browser ? undefined : { WebApp: { initData: raw } }
+      window.open = () => {
+        popups.push('opened')
+        return { closed: false, close() { this.closed = true }, location: { replace: url => popups.push(url) } }
+      }
+      window.fetch = async (url, request = {}) => {
+        const path = new URL(url, location.href).pathname.replace(/^\/api/, '')
+        requests.push({ path, method: request.method || 'GET' })
+        await pause(40)
+        if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+        if (path === '/auth/telegram-webapp') {
+          assert(JSON.parse(request.body).init_data === raw, 'Raw initData must be sent unchanged')
+          return config.fail
+            ? Response.json({ detail: 'invalid_telegram_webapp_data' }, { status: config.fail })
+            : Response.json({ access_token: 'fixture-jwt', token_type: 'bearer', user: profile })
+        }
+        if (path === '/auth/me') {
+          return !config.rejectProfile && request.headers.Authorization === 'Bearer fixture-jwt'
+            ? Response.json(profile)
+            : Response.json({ detail: 'invalid_token' }, { status: 401 })
+        }
+        if (path === '/auth/bot/start') return Response.json({
+          login_id: 'a'.repeat(32), browser_token: 'fixture-browser-token', expires_in: 300,
+          telegram_url: 'https://t.me/example_bot?start=login_fixture',
+        })
+        if (path.startsWith('/auth/bot/status/')) {
+          assert(request.headers['X-Login-Token'] === 'fixture-browser-token', 'Polling must carry browser proof')
+          return Response.json({ status: 'approved', access_token: 'fixture-jwt', user: profile })
+        }
+        throw new Error('Unexpected API request')
+      }
+      root = createRoot(host)
+      root.render(h(StrictMode, null, h(MemoryRouter, { initialEntries: [path] },
+        h(Probe), h(Routes, null,
+          h(Route, { path: '/login', element: h(Login, { lang: options.lang || 'en' }) }),
+          h(Route, { path: '/account', element: h(Account, { lang: options.lang || 'en' }) }),
+          h(Route, { path: '/', element: h('p', null, 'Home') }),
+        ),
+      )))
+    }
+    const loaded = () => currentPath === '/account' && host.querySelector('.account-details')
+    const failed = () => host.querySelector('[role="alert"]')
+    const noChallenge = () => {
+      assert(!requests.some(request => request.path.startsWith('/auth/bot/')), 'Mini App must not start/poll challenges')
+      assert(popups.length === 0, 'Mini App must not open Telegram links')
+    }
+    async function check(label, run) { await run(); results.push(label) }
+
+    try {
+      await check('StrictMode /account: one exchange, direct account, stored JWT', async () => {
+        await mount('/account', { challenge: true })
+        await waitFor(loaded, 'account auto-login')
+        assert(count('/auth/telegram-webapp') === 1, 'Duplicate Mini App exchange')
+        assert(localStorage.getItem(tokenKey) === 'fixture-jwt', 'JWT not saved')
+        assert(!locations.includes('/login'), 'Unnecessary login redirect')
+        noChallenge()
+      })
+      await check('StrictMode /login: neutral state, one exchange, account redirect', async () => {
+        await mount('/login', { challenge: true })
+        await waitFor(() => host.textContent.includes('Signing in through Telegram'), 'authenticating state')
+        assert(!host.querySelector('a[target="_blank"]'), 'Browser confirmation link was shown')
+        await waitFor(loaded, 'login auto-login')
+        assert(count('/auth/telegram-webapp') === 1, 'Duplicate Mini App exchange')
+        noChallenge()
+      })
+      await check('Existing valid JWT uses /me without Mini App exchange', async () => {
+        await mount('/account', { token: 'fixture-jwt' })
+        await waitFor(loaded, 'existing JWT')
+        assert(count('/auth/telegram-webapp') === 0, 'Valid JWT unnecessarily replaced')
+      })
+      await check('Expired JWT recovers via one Mini App exchange', async () => {
+        await mount('/account', { token: 'expired-fixture' })
+        await waitFor(loaded, 'expired JWT recovery')
+        assert(count('/auth/telegram-webapp') === 1, 'Incorrect recovery count')
+        noChallenge()
+      })
+      for (const path of ['/account', '/login']) {
+        await check(`${path}: failure stays put; explicit retry succeeds`, async () => {
+          await mount(path, { fail: 401, lang: 'ru' })
+          await waitFor(failed, 'Mini App failure')
+          await pause(150)
+          assert(currentPath === path, 'Failure redirected')
+          assert(count('/auth/telegram-webapp') === 1, 'Failure retried automatically')
+          assert(host.textContent.includes('Не удалось войти через Telegram'), 'Missing RU error')
+          config.fail = false
+          click('Попробовать снова')
+          await waitFor(loaded, 'retry')
+          assert(count('/auth/telegram-webapp') === 2, 'Retry count')
+          noChallenge()
+        })
+      }
+      await check('Rejected issued JWT stops with retry rather than redirect loop', async () => {
+        await mount('/account', { rejectProfile: true })
+        await waitFor(failed, 'rejected profile')
+        await pause(150)
+        assert(currentPath === '/account' && count('/auth/telegram-webapp') === 1, 'Auth loop')
+        assert(!localStorage.getItem(tokenKey), 'Rejected JWT retained')
+      })
+      await check('Storage failure produces a retry state without redirect', async () => {
+        await mount('/login', { blockStorage: true })
+        await waitFor(failed, 'storage failure')
+        assert(host.textContent.includes('Allow site storage'), 'Missing storage guidance')
+        assert(currentPath === '/login', 'Storage error redirected')
+      })
+      await check('Unmounted exchange cannot save a late JWT', async () => {
+        await mount('/account')
+        await waitFor(() => count('/auth/telegram-webapp') === 1, 'exchange start')
+        root.unmount(); root = null
+        await pause(150)
+        assert(!localStorage.getItem(tokenKey), 'Unmounted page saved JWT')
+      })
+      await check('Normal browser retains start → deep link → poll → JWT → /me', async () => {
+        await mount('/account', { browser: true })
+        await waitFor(() => currentPath === '/login' && host.textContent.includes('Login with Telegram'), 'browser login')
+        assert(requests.length === 0, 'Browser login started without user action')
+        click('Login with Telegram')
+        await waitFor(loaded, 'browser challenge login')
+        assert(count('/auth/bot/start') === 1, 'Browser challenge count')
+        assert(popups.some(value => value.startsWith('https://t.me/')), 'Missing Telegram link')
+        assert(count('/auth/telegram-webapp') === 0, 'Browser used Mini App auth')
+        assert(!sessionStorage.getItem(challengeKey), 'Consumed challenge retained')
+      })
+      await check('Mini App logout clears JWT and returns home without auto-login', async () => {
+        await mount('/account')
+        await waitFor(loaded, 'logout setup')
+        click('Logout')
+        await waitFor(() => currentPath === '/', 'logout home')
+        await pause(150)
+        assert(!localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 1, 'Logout immediately reauthenticated')
+      })
+      window.authTestResult = { passed: results.length, checks: results }
+    } catch (error) {
+      window.authTestResult = { passed: results.length, checks: results, error: error.message }
+    } finally {
+      root?.unmount()
+      document.querySelector('#results').textContent = JSON.stringify(window.authTestResult, null, 2)
+    }
+  </script>
+</body>
+</html>

@@ -40,6 +40,34 @@ export const getToken = () => localStorage.getItem(TOKEN_KEY)
 export const saveToken = (token) => localStorage.setItem(TOKEN_KEY, token)
 export const removeToken = () => localStorage.removeItem(TOKEN_KEY)
 
+export function getTelegramInitData() {
+  if (typeof window === 'undefined') return null
+  const initData = window.Telegram?.WebApp?.initData
+  return typeof initData === 'string' && initData.trim() ? initData : null
+}
+
+let telegramAuthRequest = null
+
+export function authenticateTelegramWebApp(initData = getTelegramInitData()) {
+  if (typeof initData !== 'string' || !initData.trim()) return Promise.reject(new ApiError('miniAppFailed'))
+  if (telegramAuthRequest?.initData === initData) return telegramAuthRequest.promise
+
+  // Share only the in-flight exchange. StrictMode cleanup must not abort the
+  // request another mounted effect is using; each caller guards its own effects.
+  const pending = { initData, promise: null }
+  pending.promise = apiRequest('/auth/telegram-webapp', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ init_data: initData }),
+  }).then(result => {
+    if (typeof result.access_token !== 'string' || !result.access_token.trim()) throw new ApiError('miniAppFailed')
+    return result
+  }).finally(() => {
+    if (telegramAuthRequest === pending) telegramAuthRequest = null
+  })
+  telegramAuthRequest = pending
+  return pending.promise
+}
+
 export function readChallenge() {
   try {
     const item = JSON.parse(sessionStorage.getItem(CHALLENGE_KEY))
@@ -71,6 +99,9 @@ export const authText = {
     backend: 'Сервис входа недоступен. Попробуйте позже.',
     configuration: 'Сервис входа ещё не настроен. Попробуйте позже.',
     storage: 'Не удалось сохранить вход. Разрешите хранение данных сайта и попробуйте снова.',
+    miniAppDescription: 'Вход с вашим аккаунтом Telegram внутри приложения.',
+    authenticating: 'Входим через Telegram…',
+    miniAppFailed: 'Не удалось войти через Telegram. Повторите попытку. Если ошибка сохраняется, закройте приложение и откройте его заново через меню бота.',
     home: 'Вернуться на главную', account: 'Личный кабинет', loading: 'Загружаем профиль…',
     firstName: 'Имя', username: 'Имя пользователя', noUsername: 'Не указано', logout: 'Выйти',
   },
@@ -85,6 +116,9 @@ export const authText = {
     backend: 'Login is unavailable. Please try again later.',
     configuration: 'Login is not configured yet. Please try again later.',
     storage: 'Could not save your login. Allow site storage and try again.',
+    miniAppDescription: 'Sign in with your Telegram account inside the app.',
+    authenticating: 'Signing in through Telegram…',
+    miniAppFailed: 'Could not sign in through Telegram. Try again. If the problem persists, close the app and reopen it from the bot menu.',
     home: 'Back to Home', account: 'Your Account', loading: 'Loading your profile…',
     firstName: 'First name', username: 'Username', noUsername: 'Not set', logout: 'Logout',
   },
@@ -94,4 +128,10 @@ export function authError(error) {
   if (['unknown_challenge', 'expired'].includes(error.code)) return 'expired'
   if (['cancelled', 'consumed', 'network', 'configuration'].includes(error.code)) return error.code
   return 'backend'
+}
+
+export function telegramAuthError(error) {
+  if (error.code === 'storage' || ['SecurityError', 'QuotaExceededError'].includes(error.name)) return 'storage'
+  const code = authError(error)
+  return code === 'backend' ? 'miniAppFailed' : code
 }
