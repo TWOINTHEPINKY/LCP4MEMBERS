@@ -1,0 +1,106 @@
+/* Plans-only controls; layout, palette and glass come from the dashboard. */
+.plans-page .plans-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.plans-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.plans-info-copy { min-width: 0; }
+.plans-info h2, .plans-payment h2 { color: var(--moss-text-bright); font-size: 1.05rem; font-weight: 400; line-height: 1.5; }
+.plans-info p { margin-top: 0.25rem; font-size: 0.8rem; line-height: 1.6; color: var(--moss-text-muted); overflow-wrap: anywhere; }
+.plans-balance { flex: 0 0 auto; text-align: right; }
+.plans-balance dt { font-size: 0.75rem; color: var(--moss-text-muted); }
+.plans-balance dd { margin-top: 0.2rem; font-size: 1.5rem; color: var(--moss-text-bright); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plans-periods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; padding: 0.5rem; margin: 0 0 1rem; border-radius: 18px; }
+.plans-period, .plans-option { position: relative; display: block; min-width: 0; cursor: pointer; touch-action: manipulation; }
+.plans-period-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  height: 100%;
+  min-height: 48px;
+  padding: 0.65rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--moss-text);
+  font-size: 0.85rem;
+  text-align: center;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+.plans-discount { padding: 0.1rem 0.35rem; border: 1px solid var(--moss-border); border-radius: 6px; font-size: 0.7rem; line-height: 1.4; color: var(--moss-text-muted); white-space: nowrap; }
+.plans-period input:checked + .plans-period-face { background: var(--moss-dark); border-color: var(--moss-text-muted); color: var(--moss-text-bright); box-shadow: inset 0 -2px var(--moss-text-muted); }
+.plans-options { display: grid; gap: 0.75rem; padding: clamp(0.75rem, 2vw, 1.5rem); margin: 0 0 1.5rem; }
+.plans-option-face {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--moss-border);
+  border-radius: 16px;
+  background: rgb(5 36 10 / 20%);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+[data-theme="light"] .plans-option-face { background: rgb(255 255 255 / 32%); }
+.plans-option input:checked + .plans-option-face { background: var(--moss-dark); border-color: var(--moss-text-muted); box-shadow: inset 0 0 0 1px var(--moss-border), 0 0 12px rgb(76 175 80 / 10%); }
+.plans-period input:focus-visible + .plans-period-face, .plans-option input:focus-visible + .plans-option-face { outline: 2px solid var(--moss-text-bright); outline-offset: 3px; }
+.plans-option-details { min-width: 0; }
+.plans-name-row { display: flex; align-items: center; gap: 0.5rem; }
+.plans-selection { display: grid; place-items: center; flex: 0 0 18px; height: 18px; border: 1px solid var(--moss-text-muted); border-radius: 50%; color: var(--moss-text-bright); }
+.plans-selection svg { width: 14px; height: 14px; visibility: hidden; }
+.plans-option input:checked + .plans-option-face .plans-selection svg { visibility: visible; }
+.plans-name { color: var(--moss-text-bright); font-size: 1.1rem; line-height: 1.5; }
+.plans-features { display: flex; flex-wrap: wrap; gap: 0.15rem 0.4rem; margin-top: 0.35rem; font-size: 0.8rem; line-height: 1.6; color: var(--moss-text-muted); }
+.plans-price { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; text-align: right; font-variant-numeric: tabular-nums; }
+.plans-monthly { color: var(--moss-text-bright); font-size: 1.4rem; white-space: nowrap; }
+.plans-monthly > span { font-size: 0.8rem; color: var(--moss-text-muted); }
+.plans-period-total { font-size: 0.8rem; line-height: 1.5; color: var(--moss-text-muted); }
+.plans-payment { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.5rem 1.5rem; padding: 1.25rem 1.5rem; }
+.plans-payment-copy { min-width: 0; }
+.plans-payment-copy p { margin-top: 0.3rem; color: var(--moss-text-muted); font-size: 0.85rem; line-height: 1.6; }
+.plans-payment-action { display: flex; align-items: center; gap: 1.5rem; }
+.plans-payment-total { font-size: 1.8rem; color: var(--moss-text-bright); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plans-pay { width: auto; min-width: 130px; justify-content: center; margin-top: 0; }
+.plans-payment-note { grid-column: 1 / -1; font-size: 0.7rem; line-height: 1.6; color: var(--moss-text-muted); text-align: right; }
+@media (hover: hover) {
+  .plans-period:hover .plans-period-face, .plans-option:hover .plans-option-face { border-color: var(--moss-text-muted); }
+}
+@media (max-width: 640px) {
+  .plans-info { padding: 1rem; gap: 0.75rem; border-radius: 18px; }
+  .plans-info h2 { font-size: 0.95rem; }
+  .plans-periods { gap: 0.25rem; padding: 0.35rem; }
+  .plans-period-face { flex-direction: column; flex-wrap: nowrap; gap: 0.25rem; padding-inline: 0.2rem; font-size: 0.75rem; }
+  .plans-options { border-radius: 20px; }
+  .plans-option-face { padding: 0.9rem 0.75rem; gap: 0.75rem; }
+  .plans-name { font-size: 1rem; }
+  .plans-monthly { font-size: 1.2rem; }
+  .plans-payment { grid-template-columns: minmax(0, 1fr); padding: 1rem; border-radius: 18px; gap: 0.75rem; }
+  .plans-payment-action { justify-content: space-between; gap: 0.75rem; }
+  .plans-payment-note { text-align: left; }
+}
+@media (max-width: 380px) {
+  .plans-info { flex-wrap: wrap; }
+  .plans-balance { display: flex; align-items: baseline; gap: 0.5rem; text-align: left; }
+  .plans-balance dd { margin: 0; font-size: 1.25rem; }
+  .plans-option-face { padding-inline: 0.6rem; gap: 0.5rem; }
+  .plans-name-row { gap: 0.35rem; }
+  .plans-name { font-size: 0.9rem; }
+  .plans-features { flex-direction: column; gap: 0; font-size: 0.7rem; }
+  .plans-features > [aria-hidden] { display: none; }
+  .plans-price { max-width: 128px; }
+  .plans-monthly { font-size: 1.05rem; }
+  .plans-monthly > span, .plans-period-total { font-size: 0.7rem; }
+}

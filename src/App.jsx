@@ -18,6 +18,7 @@ import Account from './pages/Account'
 import AccountLogoutButton from './components/AccountLogoutButton'
 import ProfileSettings from './components/ProfileSettings'
 import DashboardPlaceholder from './pages/DashboardPlaceholder'
+import Plans from './pages/Plans'
 import { getTelegramInitData } from './lib/auth'
 import { useDashboardHeader } from './lib/dashboardHeader'
 import { getSavedLanguage, saveLanguage } from './lib/language'
@@ -216,7 +217,7 @@ function App() {
   const showGlobalHeader = !telegramInitData || !['/', '/login', '/app'].includes(pathname.replace(/\/+$/, '') || '/')
   const headerContentRef = useRef(null)
   const { hidden: headerHidden, reveal: revealHeader } = useDashboardHeader(isDashboard && !telegramInitData, headerContentRef)
-  const showDashboardFooter = isDashboard || dashboardPlaceholderRoutes.some(section => pathname.replace(/\/+$/, '') === `/${section}`)
+  const showDashboardFooter = isDashboard || pathname.replace(/\/+$/, '') === '/plans' || dashboardPlaceholderRoutes.some(section => pathname.replace(/\/+$/, '') === `/${section}`)
 
   const t = translations[lang]
   const fullText = t.slogan
@@ -412,6 +413,7 @@ function App() {
             <AccountLogoutButton lang={lang} onError={setToast} />
           </ProfileSettings> : null} />} />
           <Route path="/account" element={<Navigate to="/app" replace />} />
+          <Route path="/plans" element={<Plans lang={lang} />} />
           {dashboardPlaceholderRoutes.map(section => (
             <Route key={section} path={`/${section}`} element={<DashboardPlaceholder section={section} lang={lang} />} />
           ))}
