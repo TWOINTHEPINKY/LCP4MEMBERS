@@ -36,10 +36,13 @@
 | `bot/.env` | `SUPPORT_TELEGRAM_URL` | Существующая ссылка поддержки `https://t.me/<username>` |
 | `bot/.env` | `ADMIN_IDS` | Существующие числовые ID через запятую; пустое значение отключает админку |
 | `.env` (корень) | `VITE_API_URL` | В production `/api` на том же домене; локально `http://localhost:8000` |
+| `.env` (корень) / окружение сборки | `VITE_SUPPORT_TELEGRAM_URL` | Публичный адрес поддержки `https://t.me/<username>`; используйте тот же адрес, что в `SUPPORT_TELEGRAM_URL` бота |
 
 Для каждого нового секрета отдельно выполните `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`. Не используйте BOT_TOKEN вместо internal/JWT secret. Backend явно отказывается запускаться без обязательных секретов, с короткими или совпадающими секретами. Бот читает настройки только из `bot/.env`, как и прежде. Backend читает `backend/.env`, при этом переменные окружения имеют приоритет.
 
 `VITE_API_URL` не секрет: Vite включает его в frontend при сборке. В dev доступен fallback `http://localhost:8000`; в production fallback отсутствует, и при пустой настройке UI сообщает о недоступной конфигурации. Для production задайте `VITE_API_URL=/api` при обычной сборке `npm run build`; API и frontend доступны на `https://lcpn3twork.com`.
+
+`VITE_SUPPORT_TELEGRAM_URL` также публична и встраивается Vite при сборке. Задайте её в корневом frontend `.env` или в окружении production-сборки до `npm run build`; изменение требует пересборки (в dev — перезапуска Vite). Frontend принимает только HTTPS-ссылку на один username в `t.me`, без query, fragment, дополнительных путей и credentials. Пустое или неверное значение оставляет действие поддержки отключённым. В Telegram используется `WebApp.openTelegramLink`, если доступен; в браузере — обычная ссылка в новой вкладке с `noopener noreferrer`. Переносить `BOT_TOKEN` и другие секреты в `VITE_*` нельзя; настройки бота frontend автоматически не читает.
 
 Бот формирует кнопку входа с `/login` и кнопку меню «Кабинет» с `/app`. При последующем обновлении production проверьте `WEB_APP_URL` в существующем `bot/.env`; после перезапуска бот установит новое default menu через `set_chat_menu_button`. Если URL Mini App отдельно задан в BotFather, обновите его на `https://lcpn3twork.com/app`. Старые сообщения на текущем домене поддерживаются редиректами выше. Ссылки на прежний GitHub Pages origin требуют отдельного перенаправления на том хостинге.
 

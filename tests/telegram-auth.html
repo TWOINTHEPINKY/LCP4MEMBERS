@@ -8,11 +8,15 @@
   <pre id="results">Running…</pre>
   <div id="fixture"></div>
   <script type="module">
-    import { createElement as h, StrictMode } from 'react'
+    import { createElement as h, Fragment, StrictMode } from 'react'
     import { createRoot } from 'react-dom/client'
-    import { MemoryRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
+    import { MemoryRouter, Routes, Route, Navigate, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
     import Login from '../src/pages/Login.jsx'
     import Account from '../src/pages/Account.jsx'
+    import AccountLogoutButton from '../src/components/AccountLogoutButton.jsx'
+    import App from '../src/App.jsx'
+    import SupportAction from '../src/components/SupportAction.jsx'
+    import { validateSupportUrl } from '../src/lib/support.js'
 
     const host = document.querySelector('#fixture')
     const results = []
@@ -20,7 +24,7 @@
     const challengeKey = 'lcp_login_challenge'
     const profile = { id: 123456, first_name: 'Test User', username: 'test_user', last_name: null }
     const raw = 'query_id=fixture%2Bvalue&user=%7B%7D&hash=test-only'
-    let root, config, requests, popups, locations, currentPath, navigationType, blockStorage
+    let root, config, requests, popups, locations, currentPath, navigationType, blockStorage, logoutErrors, navigate
     const storage = () => {
       const data = new Map()
       return {
@@ -29,13 +33,16 @@
           if (blockStorage) throw new DOMException('Test storage failure', 'QuotaExceededError')
           data.set(key, String(value))
         },
-        removeItem: key => data.delete(key),
+        removeItem: key => {
+          if (config.failRemoveToken) throw new DOMException('Test storage failure', 'SecurityError')
+          data.delete(key)
+        },
       }
     }
     const pause = ms => new Promise(resolve => setTimeout(resolve, ms))
     const assert = (condition, label) => { if (!condition) throw new Error(label) }
     async function waitFor(condition, label) {
-      for (let i = 0; i < 160; i++) {
+      for (let i = 0; i < 320; i++) {
         if (condition()) return
         await pause(25)
       }
@@ -44,12 +51,13 @@
     function Probe() {
       currentPath = useLocation().pathname
       navigationType = useNavigationType()
+      navigate = useNavigate()
       locations.push(currentPath)
       return null
     }
     const count = path => requests.filter(request => request.path === path).length
     const click = label => {
-      const button = [...host.querySelectorAll('button')].find(element => element.textContent === label)
+      const button = [...host.querySelectorAll('button')].find(element => element.textContent === label || element.getAttribute('aria-label') === label)
       assert(button, `Missing button: ${label}`)
       button.click()
     }
@@ -57,9 +65,11 @@
       root?.unmount()
       await pause(100)
       config = options
-      requests = []; popups = []; locations = []; blockStorage = false
-      Object.defineProperty(window, 'localStorage', { configurable: true, value: storage() })
+      requests = []; popups = []; locations = []; logoutErrors = []; blockStorage = false
+      if (!options.reuseStorage) Object.defineProperty(window, 'localStorage', { configurable: true, value: storage() })
       Object.defineProperty(window, 'sessionStorage', { configurable: true, value: storage() })
+      if (options.savedLanguage !== undefined) localStorage.setItem('lcp_language', options.savedLanguage)
+      if (!options.showCookieBanner) localStorage.setItem('cookies-accepted', 'true')
       if (options.token) localStorage.setItem(tokenKey, options.token)
       if (options.challenge) sessionStorage.setItem(challengeKey, JSON.stringify({
         login_id: 'a'.repeat(32), browser_token: 'fixture-browser-token', expiresAt: Date.now() + 300000,
@@ -83,7 +93,7 @@
         }
         if (path === '/auth/me') {
           return !config.rejectProfile && request.headers.Authorization === 'Bearer fixture-jwt'
-            ? Response.json(profile)
+            ? Response.json(config.profile || profile)
             : Response.json({ detail: 'invalid_token' }, { status: 401 })
         }
         if (path === '/auth/bot/start') return Response.json({
@@ -98,15 +108,18 @@
       }
       root = createRoot(host)
       root.render(h(StrictMode, null, h(MemoryRouter, { initialEntries: [path] },
-        h(Probe), h(Routes, null,
+        h(Probe), options.fullApp ? h(App) : h(Routes, null,
           h(Route, { path: '/login', element: h(Login, { lang: options.lang || 'en' }) }),
-          h(Route, { path: '/app', element: h(Account, { lang: options.lang || 'en' }) }),
+          h(Route, { path: '/app', element: h(Fragment, null,
+            h('header', null, h(AccountLogoutButton, { lang: options.lang || 'en', onError: error => logoutErrors.push(error) })),
+            h(Account, { lang: options.lang || 'en' }),
+          ) }),
           h(Route, { path: '/account', element: h(Navigate, { to: '/app', replace: true }) }),
           h(Route, { path: '/', element: h('p', null, 'Home') }),
         ),
       )))
     }
-    const loaded = () => currentPath === '/app' && host.querySelector('.account-details')
+    const loaded = () => currentPath === '/app' && host.querySelector('.dashboard-profile')
     const failed = () => host.querySelector('[role="alert"]')
     const noChallenge = () => {
       assert(!requests.some(request => request.path.startsWith('/auth/bot/')), 'Mini App must not start/poll challenges')
@@ -203,6 +216,141 @@
         await waitFor(() => currentPath === '/', 'logout home')
         await pause(150)
         assert(!localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 1, 'Logout immediately reauthenticated')
+      })
+      await check('Browser header logout clears JWT and replaces the route with /login', async () => {
+        await mount('/app', { browser: true, token: 'fixture-jwt' })
+        await waitFor(loaded, 'browser logout setup')
+        click('Logout')
+        await waitFor(() => currentPath === '/login', 'browser logout')
+        assert(!localStorage.getItem(tokenKey), 'Browser JWT retained')
+        assert(navigationType === 'REPLACE', 'Logout added history')
+        assert(count('/auth/telegram-webapp') === 0, 'Browser logout exchanged initData')
+      })
+      await check('Failed logout reports storage error without navigating or losing the profile', async () => {
+        await mount('/app', { browser: true, token: 'fixture-jwt' })
+        await waitFor(loaded, 'failed logout setup')
+        config.failRemoveToken = true
+        click('Logout')
+        await waitFor(() => logoutErrors.length === 1, 'logout error')
+        assert(logoutErrors[0].includes('Allow site storage'), 'Missing logout error')
+        assert(loaded() && localStorage.getItem(tokenKey) === 'fixture-jwt', 'Failed logout navigated')
+      })
+      await check('Logout during Mini App exchange cannot restore a late JWT', async () => {
+        await mount('/app')
+        await waitFor(() => count('/auth/telegram-webapp') === 1, 'pending logout setup')
+        click('Logout')
+        await waitFor(() => currentPath === '/', 'pending logout')
+        await pause(150)
+        assert(!localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 1, 'Late auth restored login')
+      })
+      await check('Global RU default, explicit EN persistence, public page and next visit', async () => {
+        await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt', showCookieBanner: true })
+        await waitFor(loaded, 'full dashboard')
+        assert(host.querySelector('#dashboard-title').textContent === 'Личный кабинет', 'Default is not RU')
+        assert(host.querySelector('.cookie-accept')?.textContent === 'Принять', 'Cookie banner did not use RU')
+        assert(!localStorage.getItem('lcp_language'), 'Implicit default was persisted')
+        assert(host.querySelector('header .logout-btn')?.title === 'Выйти', 'Missing RU header logout')
+        assert(!host.querySelector('.dashboard-profile button'), 'Profile contains controls')
+        const theme = localStorage.getItem('theme')
+        click('Переключить на английский')
+        await waitFor(() => document.documentElement.lang === 'en', 'EN toggle')
+        assert(localStorage.getItem('lcp_language') === 'en', 'EN not persisted')
+        assert(host.querySelector('.cookie-accept')?.textContent === 'Accept', 'Cookie banner did not switch to EN')
+        click('Accept')
+        await waitFor(() => !host.querySelector('.cookie-banner'), 'cookie consent')
+        assert(localStorage.getItem('cookies-accepted') === 'true', 'Cookie acceptance changed')
+        assert(localStorage.getItem('theme') === theme, 'Language changed theme')
+        navigate('/')
+        await waitFor(() => host.querySelector('.connect-btn')?.textContent === 'Connect', 'public EN')
+        assert(!host.querySelector('header .logout-btn'), 'Public header has logout')
+        click('Account')
+        await waitFor(loaded, 'return to dashboard')
+        await mount('/app', { fullApp: true, browser: true, reuseStorage: true })
+        await waitFor(loaded, 'restored EN visit')
+        assert(host.querySelector('#dashboard-title').textContent === 'Your Account', 'Saved EN not restored')
+      })
+      await check('Invalid global language falls back to RU and dashboard identity stays real', async () => {
+        await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt', savedLanguage: 'invalid',
+          profile: { ...profile, first_name: 'Настоящее имя', last_name: 'Фамилия' } })
+        await waitFor(loaded, 'RU fallback')
+        assert(host.querySelector('#dashboard-title').textContent === 'Личный кабинет', 'Invalid language did not fall back')
+        const identity = host.querySelector('.dashboard-profile').textContent
+        assert(identity.includes('Настоящее имя Фамилия') && identity.includes('@test_user') && identity.includes('123456'), 'Profile is not from /me')
+        const metadata = host.querySelector('.dashboard-profile-meta').textContent
+        assert(metadata.includes('@test_user') && metadata.includes('TG ID 123456'), 'Profile metadata is separated')
+        assert(host.querySelector('.dashboard-device-count').textContent.trim() === '0 / 5', 'Zero-device state changed')
+        assert(!host.querySelector('.dashboard-device-list'), 'Fake devices were shown')
+        assert(!host.querySelector('.dashboard-demo, #overview-title'), 'Development labels remain')
+        assert(!/Демо|Обзор|примера|Overview|Demo|example/.test(host.querySelector('.dashboard-page').textContent), 'Development copy remains')
+        assert(host.querySelector('button[aria-describedby="top-up-note"]').disabled, 'Payments became active')
+        const support = host.querySelector('[aria-labelledby="support-title"]')
+        const configuredSupportUrl = validateSupportUrl(import.meta.env.VITE_SUPPORT_TELEGRAM_URL)
+        if (configuredSupportUrl) assert(support.querySelector('a')?.href === configuredSupportUrl, 'Configured support URL missing')
+        else assert(support.querySelector('button')?.disabled && !support.querySelector('a'), 'Unconfigured support is not disabled')
+        assert(requests.every(request => request.path === '/auth/me'), 'Business data triggered API calls')
+      })
+      await check('Dashboard navigation and all five neutral placeholders return to /app', async () => {
+        for (const path of ['/plans', '/devices', '/referrals', '/terms', '/privacy']) {
+          const link = host.querySelector(`a[href="${path}"]`)
+          assert(link, `Missing dashboard link ${path}`)
+          link.click()
+          await waitFor(() => currentPath === path && host.querySelector('#placeholder-title'), path)
+          assert(host.textContent.includes('Раздел готовится'), 'Missing placeholder notice')
+          assert(host.querySelector('header') && host.querySelector('footer') && host.querySelector('.matrix-rain'), 'Placeholder lost site layout')
+          assert(!host.querySelector('header .logout-btn'), 'Non-dashboard header changed')
+          host.querySelector('.dashboard-placeholder a[href="/app"]').click()
+          await waitFor(loaded, 'placeholder return')
+        }
+        assert(requests.every(request => request.path === '/auth/me'), 'Placeholder requested business data')
+      })
+      await check('Full App header logout preserves Telegram safe destination', async () => {
+        await mount('/app', { fullApp: true })
+        await waitFor(loaded, 'full App Telegram login')
+        click('Выйти')
+        await waitFor(() => currentPath === '/' && host.querySelector('.connect-btn'), 'safe logout home')
+        await pause(150)
+        assert(!localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 1, 'Full App logout reauthenticated')
+      })
+      await check('Profile without username retains a compact Telegram ID without a separator', async () => {
+        await mount('/app', { browser: true, token: 'fixture-jwt', profile: { ...profile, username: null } })
+        await waitFor(loaded, 'no-username profile')
+        const metadata = host.querySelector('.dashboard-profile-meta')
+        assert(metadata.textContent === 'TG ID 123456', 'Missing ID or stray separator')
+      })
+      await check('Support action stays disabled for missing or invalid configuration', async () => {
+        for (const url of [null, '', 'https://example.com/support', 'https://t.me/fixture_support?url=unsafe']) {
+          root.render(h(SupportAction, { lang: 'ru', url }))
+          await pause(50)
+          await waitFor(() => host.querySelector('button[aria-describedby="support-note"]'), 'disabled support')
+          assert(host.querySelector('button').disabled && !host.querySelector('a'), 'Unsafe support navigation')
+          host.querySelector('button').click()
+          assert(popups.length === 0, 'Disabled support opened a popup')
+        }
+      })
+      await check('Support uses the native browser link, Telegram bridge or fallback as appropriate', async () => {
+        const url = 'https://t.me/fixture_support'
+        root.render(h(SupportAction, { lang: 'en', url }))
+        await waitFor(() => host.querySelector('a'), 'active support')
+        const link = host.querySelector('a')
+        assert(link.href === url && link.textContent.includes('Contact'), 'Wrong support link')
+        assert(link.target === '_blank' && link.rel.includes('noopener') && link.rel.includes('noreferrer'), 'Unsafe external link')
+        function clickSupport(options = {}) {
+          let prevented
+          host.addEventListener('click', event => {
+            prevented = event.defaultPrevented
+            event.preventDefault() // Never actually open Telegram from these tests.
+          }, { once: true })
+          link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...options }))
+          return prevented
+        }
+        window.Telegram = undefined
+        assert(clickSupport() === false, 'Normal browser lost native navigation')
+        const opened = []
+        window.Telegram = { WebApp: { platform: 'ios', openTelegramLink: value => opened.push(value) } }
+        assert(clickSupport() === true && opened.length === 1 && opened[0] === url, 'Telegram bridge was not used')
+        assert(clickSupport({ ctrlKey: true }) === false && opened.length === 1, 'Modified click was intercepted')
+        window.Telegram.WebApp.openTelegramLink = () => { throw new Error('unsupported') }
+        assert(clickSupport() === false, 'Bridge failure disabled native fallback')
       })
       window.authTestResult = { passed: results.length, checks: results }
     } catch (error) {

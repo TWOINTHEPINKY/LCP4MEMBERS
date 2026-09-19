@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LogoIcon from '../assets/icons/logo.svg?react'
-import { ApiError, apiRequest, authenticateTelegramWebApp, authError, authText, getTelegramInitData, getToken, removeToken, saveToken, telegramAuthError } from '../lib/auth'
+import Dashboard from './Dashboard'
+import { ApiError, apiRequest, authenticateTelegramWebApp, authError, authText, getTelegramInitData, getToken, saveToken, telegramAuthError } from '../lib/auth'
 
 export default function Account({ lang }) {
   const navigate = useNavigate()
@@ -66,15 +67,7 @@ export default function Account({ lang }) {
     return () => controller.abort()
   }, [navigate, attempt, initData])
 
-  function logout() {
-    try {
-      removeToken()
-      // /login auto-authenticates in Telegram, so logout must leave the auth routes.
-      navigate(initData ? '/' : '/login', { replace: true })
-    } catch {
-      setError('storage')
-    }
-  }
+  if (user && !error) return <Dashboard user={user} lang={lang} />
 
   return (
     <div className="login-container fade-in visible">
@@ -88,14 +81,7 @@ export default function Account({ lang }) {
             <p>{text[error]}</p>
             <button className="back-btn" onClick={() => setAttempt(value => value + 1)}>{text.retry}</button>
           </div>
-        ) : user ? (
-          <dl className="account-details">
-            <div><dt>{text.firstName}</dt><dd>{user.first_name}</dd></div>
-            <div><dt>{text.username}</dt><dd>{user.username ? `@${user.username}` : text.noUsername}</dd></div>
-            <div><dt>Telegram ID</dt><dd>{user.id}</dd></div>
-          </dl>
         ) : <p className="auth-status" role="status">{authenticating ? text.authenticating : text.loading}</p>}
-        <button className="custom-telegram-btn" onClick={logout}>{text.logout}</button>
         <button className="back-btn" onClick={() => navigate('/')}>← {text.home}</button>
       </section>
     </div>

@@ -15,6 +15,10 @@ import CookieBanner from './components/CookieBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Account from './pages/Account'
+import AccountLogoutButton from './components/AccountLogoutButton'
+import DashboardPlaceholder from './pages/DashboardPlaceholder'
+import { getSavedLanguage, saveLanguage } from './lib/language'
+import { dashboardPlaceholderRoutes, dashboardText } from './lib/dashboardText'
 
 const translations = {
   en: {
@@ -190,7 +194,7 @@ function App() {
   }
 
   const [theme, setTheme] = useState(getInitialTheme())
-  const [lang, setLang] = useState('en')
+  const [lang, setLang] = useState(getSavedLanguage)
   const [fading, setFading] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [particles, setParticles] = useState([])
@@ -202,10 +206,16 @@ function App() {
   const connectBtnRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const isDashboard = pathname.replace(/\/+$/, '') === '/app'
+  const showDashboardFooter = isDashboard || dashboardPlaceholderRoutes.some(section => pathname.replace(/\/+$/, '') === `/${section}`)
 
   const t = translations[lang]
   const fullText = t.slogan
   const themeToggleLabel = theme === 'dark' ? t.switchToLight : t.switchToDark
+
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme)
@@ -260,7 +270,12 @@ function App() {
 
   const toggleLanguage = () => {
     setFading(true)
-    setTimeout(() => { setLang(lang === 'en' ? 'ru' : 'en'); setFading(false) }, 400)
+    const nextLanguage = lang === 'en' ? 'ru' : 'en'
+    setTimeout(() => {
+      setLang(nextLanguage)
+      saveLanguage(nextLanguage)
+      setFading(false)
+    }, 400)
   }
 
   const handleThemeChange = (newTheme) => {
@@ -350,7 +365,7 @@ function App() {
                   ? <SunIcon className="theme-svg" aria-hidden="true" />
                   : <MoonIcon className="theme-svg" aria-hidden="true" />}
               </button>
-              <button
+              {isDashboard ? <AccountLogoutButton lang={lang} onError={setToast} /> : <button
                 type="button"
                 className="header-control account-btn"
                 onClick={() => navigate('/app')}
@@ -361,7 +376,7 @@ function App() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-              </button>
+              </button>}
             </div>
           </div>
         </header>
@@ -381,6 +396,9 @@ function App() {
           } />
           <Route path="/app" element={<Account lang={lang} />} />
           <Route path="/account" element={<Navigate to="/app" replace />} />
+          {dashboardPlaceholderRoutes.map(section => (
+            <Route key={section} path={`/${section}`} element={<DashboardPlaceholder section={section} lang={lang} />} />
+          ))}
         </Routes>
 
         <button type="button" className={`scroll-to-top ${showScrollTop ? 'visible' : 'hidden'}`} onClick={scrollToTop} aria-label={t.scrollToTop} title={t.scrollToTop}>
@@ -389,10 +407,14 @@ function App() {
 
         <footer>
           <p>{t.footer}</p>
+          {showDashboardFooter && <nav className="dashboard-legal" aria-label={dashboardText[lang].legalLinks}>
+            <Link to="/terms">{dashboardText[lang].terms}</Link>
+            <Link to="/privacy">{dashboardText[lang].privacy}</Link>
+          </nav>}
         </footer>
 
         {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-        <CookieBanner />
+        <CookieBanner lang={lang} />
       </div>
     </ErrorBoundary>
   )
