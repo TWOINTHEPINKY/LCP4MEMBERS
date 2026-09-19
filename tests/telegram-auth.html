@@ -75,7 +75,7 @@
         login_id: 'a'.repeat(32), browser_token: 'fixture-browser-token', expiresAt: Date.now() + 300000,
       }))
       blockStorage = Boolean(options.blockStorage)
-      window.Telegram = options.browser ? undefined : { WebApp: { initData: raw } }
+      window.Telegram = options.browser ? options.telegram : { WebApp: { initData: raw } }
       window.open = () => {
         popups.push('opened')
         return { closed: false, close() { this.closed = true }, location: { replace: url => popups.push(url) } }
@@ -89,10 +89,10 @@
           assert(JSON.parse(request.body).init_data === raw, 'Raw initData must be sent unchanged')
           return config.fail
             ? Response.json({ detail: 'invalid_telegram_webapp_data' }, { status: config.fail })
-            : Response.json({ access_token: 'fixture-jwt', token_type: 'bearer', user: profile })
+            : Response.json({ access_token: config.issuedToken || 'fixture-jwt', token_type: 'bearer', user: profile })
         }
         if (path === '/auth/me') {
-          return !config.rejectProfile && request.headers.Authorization === 'Bearer fixture-jwt'
+          return !config.rejectProfile && request.headers.Authorization === `Bearer ${config.issuedToken || 'fixture-jwt'}`
             ? Response.json(config.profile || profile)
             : Response.json({ detail: 'invalid_token' }, { status: 401 })
         }
@@ -126,6 +126,21 @@
       assert(popups.length === 0, 'Mini App must not open Telegram links')
     }
     async function check(label, run) { await run(); results.push(label) }
+    function watchForHeader() {
+      let rendered = Boolean(host.querySelector('header'))
+      const inspect = records => {
+        for (const record of records) for (const node of [...record.addedNodes, ...record.removedNodes]) {
+          if (node.nodeType === Node.ELEMENT_NODE && (node.matches('header') || node.querySelector('header'))) rendered = true
+        }
+      }
+      const observer = new MutationObserver(inspect)
+      observer.observe(host, { childList: true, subtree: true })
+      return () => {
+        inspect(observer.takeRecords())
+        observer.disconnect()
+        return rendered
+      }
+    }
 
     try {
       await check('StrictMode /app: one exchange, direct account, stored JWT', async () => {
@@ -209,13 +224,19 @@
         assert(count('/auth/telegram-webapp') === 0, 'Browser used Mini App auth')
         assert(!sessionStorage.getItem(challengeKey), 'Consumed challenge retained')
       })
-      await check('Mini App logout clears JWT and returns home without auto-login', async () => {
+      await check('Mini App logout removes the old JWT, exchanges raw initData and replaces /app without landing', async () => {
         await mount('/app')
         await waitFor(loaded, 'logout setup')
+        config.issuedToken = 'renewed-fixture-jwt'
         click('Logout')
-        await waitFor(() => currentPath === '/', 'logout home')
+        assert(!localStorage.getItem(tokenKey), 'Old JWT was not removed synchronously')
+        await waitFor(() => currentPath === '/login', 'automatic reauthentication')
+        await waitFor(loaded, 'logout reauthenticated')
         await pause(150)
-        assert(!localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 1, 'Logout immediately reauthenticated')
+        assert(localStorage.getItem(tokenKey) === 'renewed-fixture-jwt', 'Fresh JWT was not stored')
+        assert(count('/auth/telegram-webapp') === 2, 'Logout did not use exactly one new exchange')
+        assert(!locations.includes('/') && navigationType === 'REPLACE', 'Logout exposed landing or added history')
+        noChallenge()
       })
       await check('Browser header logout clears JWT and replaces the route with /login', async () => {
         await mount('/app', { browser: true, token: 'fixture-jwt' })
@@ -235,13 +256,16 @@
         assert(logoutErrors[0].includes('Allow site storage'), 'Missing logout error')
         assert(loaded() && localStorage.getItem(tokenKey) === 'fixture-jwt', 'Failed logout navigated')
       })
-      await check('Logout during Mini App exchange cannot restore a late JWT', async () => {
+      await check('Logout during an in-flight exchange reuses secure authentication without duplicate requests', async () => {
         await mount('/app')
         await waitFor(() => count('/auth/telegram-webapp') === 1, 'pending logout setup')
         click('Logout')
-        await waitFor(() => currentPath === '/', 'pending logout')
+        assert(!localStorage.getItem(tokenKey), 'Pending logout retained JWT')
+        await waitFor(loaded, 'pending logout reauthenticated')
         await pause(150)
-        assert(!localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 1, 'Late auth restored login')
+        assert(localStorage.getItem(tokenKey) === 'fixture-jwt' && count('/auth/telegram-webapp') === 1, 'Pending auth duplicated')
+        assert(locations.includes('/login') && !locations.includes('/'), 'Pending logout exposed landing')
+        noChallenge()
       })
       await check('Global RU default, explicit EN persistence, public page and next visit', async () => {
         await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt', showCookieBanner: true })
@@ -303,13 +327,186 @@
         }
         assert(requests.every(request => request.path === '/auth/me'), 'Placeholder requested business data')
       })
-      await check('Full App header logout preserves Telegram safe destination', async () => {
+      await check('Telegram profile has one gear with three floating controls and no normal header', async () => {
         await mount('/app', { fullApp: true })
         await waitFor(loaded, 'full App Telegram login')
+        assert(!host.querySelector('header'), 'Telegram competes with native chrome')
+        const card = host.querySelector('.dashboard-profile')
+        const gear = card.querySelector('.profile-settings-toggle')
+        const panel = card.querySelector('.profile-settings-panel')
+        assert(gear && card.querySelectorAll('.profile-settings-toggle').length === 1, 'Missing or duplicate gear')
+        assert(gear.getAttribute('aria-controls') === panel.id && gear.getAttribute('aria-expanded') === 'false', 'Missing disclosure semantics')
+        assert(panel.inert && panel.querySelectorAll('button').length === 3, 'Wrong hidden controls')
+        const height = card.getBoundingClientRect().height
+        gear.focus()
+        gear.click()
+        await waitFor(() => gear.getAttribute('aria-expanded') === 'true', 'gear opens')
+        await pause(250)
+        assert(getComputedStyle(panel).position === 'absolute' && !panel.inert, 'Controls entered normal flow')
+        assert(card.getBoundingClientRect().height === height, 'Opening gear increased profile height')
+        assert(panel.getBoundingClientRect().right < gear.getBoundingClientRect().left, 'Controls did not expand to the left')
+        const buttons = [...panel.querySelectorAll('button')]
+        const bounds = buttons.map(button => button.getBoundingClientRect())
+        assert(bounds.every(box => box.top === bounds[0].top && box.width === box.height), 'Controls are not square in one row')
+        buttons[0].focus()
+        assert(document.activeElement === buttons[0], 'Open controls cannot receive keyboard focus')
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+        await waitFor(() => panel.inert, 'Escape closes')
+        assert(document.activeElement === gear, 'Escape lost focus')
+        gear.click()
+        await waitFor(() => !panel.inert, 'reopen')
+        document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+        await waitFor(() => panel.inert, 'outside closes')
+        gear.click()
+        await waitFor(() => !panel.inert, 'reopen toggle')
+        gear.click()
+        await waitFor(() => panel.inert, 'gear closes')
+        gear.click()
+        await waitFor(() => !panel.inert, 'reopen keyboard')
+        host.querySelector('.dashboard-action').focus()
+        await waitFor(() => panel.inert, 'focus outside closes')
+      })
+      await check('Telegram profile reuses and persists language/theme actions, closing after either action', async () => {
+        const gear = host.querySelector('.profile-settings-toggle')
+        const panel = host.querySelector('.profile-settings-panel')
+        gear.click()
+        await waitFor(() => !panel.inert, 'language controls open')
+        click('Переключить на английский')
+        await waitFor(() => panel.inert && document.documentElement.lang === 'en', 'language closes controls')
+        assert(localStorage.getItem('lcp_language') === 'en', 'Telegram language did not persist')
+        assert(document.activeElement === gear, 'Action lost gear focus')
+        const oldTheme = localStorage.getItem('theme')
+        gear.click()
+        await waitFor(() => !panel.inert, 'theme controls open')
+        panel.querySelector('.theme-btn').click()
+        await waitFor(() => panel.inert && localStorage.getItem('theme') !== oldTheme, 'theme closes controls')
+        assert(document.body.dataset.theme === localStorage.getItem('theme'), 'Theme persistence differs from UI')
+      })
+      await check('Full App Telegram gear logout reauthenticates without public landing or a loop', async () => {
+        click('Account settings')
+        await waitFor(() => !host.querySelector('.profile-settings-panel').inert, 'logout controls open')
+        const stopWatchingHeader = watchForHeader()
+        try {
+          click('Logout')
+          assert(!localStorage.getItem(tokenKey), 'Full App logout retained old JWT')
+          await waitFor(() => currentPath === '/login', 'full App reauthentication')
+          assert(!host.querySelector('header'), 'Global header appeared during Telegram reauthentication')
+          await waitFor(loaded, 'full App renewed session')
+          await pause(150)
+          assert(localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 2, 'Full App auth count or JWT incorrect')
+          assert(!locations.includes('/') && !host.querySelector('.hero'), 'Full App logout exposed landing')
+          assert(navigationType === 'REPLACE' && !host.querySelector('header'), 'Wrong restored dashboard')
+          assert(host.querySelector('.profile-settings-panel').inert, 'Logout left panel open')
+          noChallenge()
+          assert(!stopWatchingHeader(), 'Global header flashed during Telegram logout')
+        } finally { stopWatchingHeader() }
+      })
+      await check('Failed Telegram logout exchange has explicit retry and never falls through to landing', async () => {
+        await mount('/app', { fullApp: true, token: 'fixture-jwt' })
+        await waitFor(loaded, 'logout error setup')
+        config.fail = 401
+        click('Настройки аккаунта')
+        await waitFor(() => !host.querySelector('.profile-settings-panel').inert, 'logout error controls')
         click('Выйти')
-        await waitFor(() => currentPath === '/' && host.querySelector('.connect-btn'), 'safe logout home')
+        await waitFor(failed, 'logout exchange fails safely')
         await pause(150)
-        assert(!localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 1, 'Full App logout reauthenticated')
+        assert(currentPath === '/login' && count('/auth/telegram-webapp') === 1 && !localStorage.getItem(tokenKey), 'Failed logout loop or retained token')
+        assert(!locations.includes('/') && !host.querySelector('.hero'), 'Failed logout exposed landing')
+        assert(!host.querySelector('header'), 'Telegram login error displayed the global header')
+        config.fail = false
+        click('Попробовать снова')
+        await waitFor(loaded, 'logout explicit retry')
+        assert(count('/auth/telegram-webapp') === 2, 'Logout retry count')
+        noChallenge()
+      })
+      await check('Telegram root replaces /app without ever rendering the landing page', async () => {
+        const stopWatchingHeader = watchForHeader()
+        let renderedLanding = false
+        const observer = new MutationObserver(records => {
+          for (const record of records) for (const node of record.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE && (node.matches('.hero') || node.querySelector('.hero'))) renderedLanding = true
+          }
+        })
+        observer.observe(host, { childList: true, subtree: true })
+        try {
+          await mount('/', { fullApp: true })
+          await waitFor(loaded, 'Telegram root redirect')
+          await pause(150)
+          assert(navigationType === 'REPLACE' && !renderedLanding, 'Root flashed landing or pushed history')
+          assert(count('/auth/telegram-webapp') === 1, 'Root redirect caused an auth loop')
+          assert(!stopWatchingHeader(), 'Global header flashed during Telegram root redirect')
+          noChallenge()
+        } finally { observer.disconnect(); stopWatchingHeader() }
+      })
+      await check('Direct Telegram /login/ hides the global header; placeholders keep it', async () => {
+        const stopWatchingHeader = watchForHeader()
+        try {
+          await mount('/login/', { fullApp: true, fail: 401 })
+          await waitFor(failed, 'direct Telegram login')
+          assert(currentPath === '/login/' && !stopWatchingHeader(), 'Direct Telegram login displayed the global header')
+          for (const path of ['/plans', '/devices', '/referrals', '/terms', '/privacy']) {
+            navigate(path)
+            await waitFor(() => currentPath === path && host.querySelector('#placeholder-title'), 'Telegram placeholder')
+            assert(host.querySelector('header'), 'Telegram placeholder header was suppressed')
+          }
+        } finally { stopWatchingHeader() }
+      })
+      await check('Ordinary browser /login keeps the global header', async () => {
+        await mount('/login', { fullApp: true, browser: true })
+        await waitFor(() => host.querySelector('.login-card'), 'browser direct login')
+        assert(currentPath === '/login' && host.querySelector('header'), 'Browser login header was suppressed')
+        assert(count('/auth/telegram-webapp') === 0, 'Browser login started Mini App authentication')
+      })
+      for (const [label, telegram] of [
+        ['no SDK', undefined], ['SDK only', { WebApp: {} }],
+        ['unsafe identity only', { WebApp: { initDataUnsafe: { user: { id: 123456 } } } }],
+        ['whitespace raw data', { WebApp: { initData: '   ' } }],
+      ]) {
+        await check(`Ordinary browser root stays public with ${label}`, async () => {
+          await mount('/', { fullApp: true, browser: true, telegram })
+          await waitFor(() => host.querySelector('.hero'), 'browser landing')
+          assert(currentPath === '/' && navigationType === 'POP', 'Non-Mini-App root redirected')
+          assert(host.querySelector('header') && !host.querySelector('.profile-settings'), 'Public header changed')
+          assert(requests.length === 0, 'Browser root initiated authentication')
+        })
+      }
+      await check('Browser dashboard header hides/restores without reflow; public header stays unchanged', async () => {
+        const descriptor = Object.getOwnPropertyDescriptor(window, 'scrollY')
+        let y = 0
+        Object.defineProperty(window, 'scrollY', { configurable: true, get: () => y })
+        const scroll = async next => { y = next; window.dispatchEvent(new Event('scroll')); await pause(50) }
+        try {
+          await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt' })
+          await waitFor(loaded, 'browser auto-header')
+          const header = host.querySelector('header')
+          const content = header.querySelector('.header-inner')
+          const top = host.querySelector('.dashboard-page').getBoundingClientRect().top
+          assert(header.dataset.hidden === 'false' && !content.inert, 'Header not initially visible')
+          assert(header.querySelectorAll('.header-control').length === 3 && !host.querySelector('.profile-settings'), 'Browser controls moved')
+          await scroll(100)
+          assert(header.dataset.hidden === 'true' && content.inert, 'Downward scrolling did not hide header')
+          await pause(250)
+          assert(getComputedStyle(content).opacity === '0' && getComputedStyle(content).display !== 'none', 'Header did not use opacity')
+          assert(parseFloat(getComputedStyle(header, '::before').height) <= 18.1, 'Hidden header left a large blur band')
+          assert(host.querySelector('.dashboard-page').getBoundingClientRect().top === top, 'Header caused layout shift')
+          await scroll(99)
+          await scroll(100)
+          assert(header.dataset.hidden === 'true', 'Tiny movements caused jitter')
+          await scroll(88)
+          assert(header.dataset.hidden === 'false' && !content.inert, 'Upward scrolling did not restore header')
+          await scroll(120)
+          await scroll(20)
+          assert(header.dataset.hidden === 'false', 'Near top did not restore header')
+          navigate('/')
+          await waitFor(() => host.querySelector('.hero'), 'public header regression')
+          await scroll(200)
+          const publicHeader = host.querySelector('header')
+          assert(!publicHeader.hasAttribute('data-hidden') && !publicHeader.classList.contains('dashboard-browser-header'), 'Public header acquired auto-hide')
+          assert(!publicHeader.querySelector('.header-inner').inert, 'Public controls became inert')
+        } finally {
+          if (descriptor) Object.defineProperty(window, 'scrollY', descriptor)
+          else delete window.scrollY
+        }
       })
       await check('Profile without username retains a compact Telegram ID without a separator', async () => {
         await mount('/app', { browser: true, token: 'fixture-jwt', profile: { ...profile, username: null } })

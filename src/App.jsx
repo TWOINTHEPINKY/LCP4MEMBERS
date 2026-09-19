@@ -16,7 +16,10 @@ import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Account from './pages/Account'
 import AccountLogoutButton from './components/AccountLogoutButton'
+import ProfileSettings from './components/ProfileSettings'
 import DashboardPlaceholder from './pages/DashboardPlaceholder'
+import { getTelegramInitData } from './lib/auth'
+import { useDashboardHeader } from './lib/dashboardHeader'
 import { getSavedLanguage, saveLanguage } from './lib/language'
 import { dashboardPlaceholderRoutes, dashboardText } from './lib/dashboardText'
 
@@ -195,6 +198,7 @@ function App() {
 
   const [theme, setTheme] = useState(getInitialTheme())
   const [lang, setLang] = useState(getSavedLanguage)
+  const [telegramInitData] = useState(getTelegramInitData)
   const [fading, setFading] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [particles, setParticles] = useState([])
@@ -207,6 +211,10 @@ function App() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const isDashboard = pathname.replace(/\/+$/, '') === '/app'
+  const isTelegramDashboard = isDashboard && Boolean(telegramInitData)
+  const showGlobalHeader = !telegramInitData || !['/', '/login', '/app'].includes(pathname.replace(/\/+$/, '') || '/')
+  const headerContentRef = useRef(null)
+  const { hidden: headerHidden, reveal: revealHeader } = useDashboardHeader(isDashboard && !telegramInitData, headerContentRef)
   const showDashboardFooter = isDashboard || dashboardPlaceholderRoutes.some(section => pathname.replace(/\/+$/, '') === `/${section}`)
 
   const t = translations[lang]
@@ -332,39 +340,43 @@ function App() {
 
   if (loading) return <Preloader onComplete={() => setLoading(false)} />
 
+  const languageAndThemeControls = <>
+    <button
+      type="button"
+      className="header-control lang-toggle-header"
+      onClick={toggleLanguage}
+      aria-label={t.switchLanguage}
+      title={t.switchLanguage}
+    >
+      {lang.toUpperCase()}
+    </button>
+    <button
+      type="button"
+      className="header-control theme-btn"
+      onClick={() => handleThemeChange(theme === 'dark' ? 'light' : 'dark')}
+      title={themeToggleLabel}
+      aria-label={themeToggleLabel}
+    >
+      {theme === 'dark'
+        ? <SunIcon className="theme-svg" aria-hidden="true" />
+        : <MoonIcon className="theme-svg" aria-hidden="true" />}
+    </button>
+  </>
+
   return (
     <ErrorBoundary>
-      <div className="app">
+      <div className={`app${isTelegramDashboard ? ' telegram-dashboard' : ''}`}>
         <MatrixRain />
         <GreenParticles particles={particles} />
 
-        <header>
-          <div className="header-inner">
+        {showGlobalHeader && <header className={isDashboard ? 'dashboard-browser-header' : undefined} data-hidden={isDashboard ? headerHidden : undefined}>
+          <div className="header-inner" ref={headerContentRef} inert={headerHidden} aria-hidden={headerHidden || undefined} onFocusCapture={revealHeader}>
             <button type="button" className="logo" onClick={handleLogoClick} aria-label="LCP VPN logo">
               <span className="logo-icon"><LogoIcon className="logo-svg" aria-hidden="true" /></span>
               <span className="logo-text">LCP VPN</span>
             </button>
             <div className="header-right">
-              <button
-                type="button"
-                className="header-control lang-toggle-header"
-                onClick={toggleLanguage}
-                aria-label={t.switchLanguage}
-                title={t.switchLanguage}
-              >
-                {lang.toUpperCase()}
-              </button>
-              <button
-                type="button"
-                className="header-control theme-btn"
-                onClick={() => handleThemeChange(theme === 'dark' ? 'light' : 'dark')}
-                title={themeToggleLabel}
-                aria-label={themeToggleLabel}
-              >
-                {theme === 'dark'
-                  ? <SunIcon className="theme-svg" aria-hidden="true" />
-                  : <MoonIcon className="theme-svg" aria-hidden="true" />}
-              </button>
+              {languageAndThemeControls}
               {isDashboard ? <AccountLogoutButton lang={lang} onError={setToast} /> : <button
                 type="button"
                 className="header-control account-btn"
@@ -379,12 +391,12 @@ function App() {
               </button>}
             </div>
           </div>
-        </header>
+        </header>}
 
         {/* Главная, вход и личный кабинет. */}
         <Routes>
           <Route path="/" element={
-            <HomePage 
+            telegramInitData ? <Navigate to="/app" replace /> : <HomePage
               t={t} fading={fading} typewriterText={typewriterText}
               isTyping={isTyping} connectBtnRef={connectBtnRef}
               handleMagneticMove={handleMagneticMove} handleMagneticLeave={handleMagneticLeave} 
@@ -394,7 +406,10 @@ function App() {
           <Route path="/login" element={
             <Login lang={lang} />
           } />
-          <Route path="/app" element={<Account lang={lang} />} />
+          <Route path="/app" element={<Account lang={lang} profileControls={telegramInitData ? <ProfileSettings lang={lang}>
+            {languageAndThemeControls}
+            <AccountLogoutButton lang={lang} onError={setToast} />
+          </ProfileSettings> : null} />} />
           <Route path="/account" element={<Navigate to="/app" replace />} />
           {dashboardPlaceholderRoutes.map(section => (
             <Route key={section} path={`/${section}`} element={<DashboardPlaceholder section={section} lang={lang} />} />
