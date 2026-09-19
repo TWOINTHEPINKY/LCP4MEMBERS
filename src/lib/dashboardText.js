@@ -31,4 +31,4 @@ export const dashboardText = {
   },
 }
 
-export const dashboardPlaceholderRoutes = ['plans', 'devices', 'referrals', 'privacy', 'terms']
+export const dashboardPlaceholderRoutes = ['devices', 'referrals', 'privacy', 'terms']

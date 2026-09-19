@@ -126,6 +126,11 @@
       assert(popups.length === 0, 'Mini App must not open Telegram links')
     }
     async function check(label, run) { await run(); results.push(label) }
+    // Optional headless driver hook for native keyboard and overflow checks.
+    window.mountPlansForFunctionalChecks = async lang => {
+      await mount('/plans', { fullApp: true, browser: true, savedLanguage: lang })
+      await waitFor(() => host.querySelector('#plans-title'), 'Plans functional fixture')
+    }
     function watchForHeader() {
       let rendered = Boolean(host.querySelector('header'))
       const inspect = records => {
@@ -313,8 +318,15 @@
         else assert(support.querySelector('button')?.disabled && !support.querySelector('a'), 'Unconfigured support is not disabled')
         assert(requests.every(request => request.path === '/auth/me'), 'Business data triggered API calls')
       })
-      await check('Dashboard navigation and all five neutral placeholders return to /app', async () => {
-        for (const path of ['/plans', '/devices', '/referrals', '/terms', '/privacy']) {
+      await check('Dashboard navigation opens Plans and all four remaining placeholders return to /app', async () => {
+        host.querySelector('a[href="/plans"]').click()
+        await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'real Plans page')
+        assert(!host.querySelector('#placeholder-title') && host.querySelector('.plans-options'), 'Plans is still a placeholder')
+        assert(host.querySelector('header') && host.querySelector('.dashboard-legal') && host.querySelector('.matrix-rain'), 'Plans lost the shared layout')
+        assert(!host.querySelector('header').hasAttribute('data-hidden'), 'Plans acquired dashboard auto-hide')
+        click('Кабинет')
+        await waitFor(loaded, 'Plans header return')
+        for (const path of ['/devices', '/referrals', '/terms', '/privacy']) {
           const link = host.querySelector(`a[href="${path}"]`)
           assert(link, `Missing dashboard link ${path}`)
           link.click()
@@ -444,7 +456,11 @@
           await mount('/login/', { fullApp: true, fail: 401 })
           await waitFor(failed, 'direct Telegram login')
           assert(currentPath === '/login/' && !stopWatchingHeader(), 'Direct Telegram login displayed the global header')
-          for (const path of ['/plans', '/devices', '/referrals', '/terms', '/privacy']) {
+          navigate('/plans')
+          await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'Telegram Plans page')
+          assert(host.querySelector('header') && !host.querySelector('header').hasAttribute('data-hidden'), 'Telegram Plans header changed')
+          assert(!host.querySelector('.profile-settings') && host.querySelector('.dashboard-legal'), 'Plans changed Telegram chrome or footer')
+          for (const path of ['/devices', '/referrals', '/terms', '/privacy']) {
             navigate(path)
             await waitFor(() => currentPath === path && host.querySelector('#placeholder-title'), 'Telegram placeholder')
             assert(host.querySelector('header'), 'Telegram placeholder header was suppressed')
@@ -507,6 +523,53 @@
           if (descriptor) Object.defineProperty(window, 'scrollY', descriptor)
           else delete window.scrollY
         }
+      })
+      await check('Plans selects periods/plans, recalculates totals and never enables or requests payment', async () => {
+        await mount('/plans', { fullApp: true, browser: true })
+        await waitFor(() => host.querySelector('#plans-title'), 'Plans initial state')
+        const total = () => host.querySelector('.plans-payment-total').textContent.replace(/\s/g, '')
+        const selectPeriod = months => host.querySelector(`input[name="plans-period"][value="${months}"]`).click()
+        const selectPlan = id => host.querySelector(`input[name="plans-plan"][value="${id}"]`).closest('label').click()
+        assert(host.querySelector('#plans-title').textContent === 'Тарифы', 'Plans did not use RU default')
+        assert(host.querySelector('.plans-balance dd').textContent.replace(/\s/g, '') === '0₽', 'Wrong mock balance')
+        assert(host.querySelector('input[name="plans-period"]:checked').value === '1', 'Wrong initial period')
+        assert(!host.querySelector('input[name="plans-plan"]:checked') && total() === '0₽', 'Plan was preselected')
+        assert(host.querySelector('.plans-payment-copy p').textContent === 'Тариф не выбран', 'Missing empty summary')
+        assert(host.querySelectorAll('.plans-discount').length === 2 && !host.querySelector('.plans-period-total'), 'Wrong monthly presentation')
+        assert(host.querySelector('.plans-pay').disabled, 'Unselected payment is enabled')
+        selectPeriod(6)
+        await waitFor(() => host.querySelectorAll('.plans-period-total').length === 3, 'discounted prices')
+        assert(total() === '0₽' && !host.querySelector('input[name="plans-plan"]:checked'), 'Period implicitly selected a plan')
+        const expected = { basic: [1615, 269], plus: [3235, 539], 'pro-plus': [5395, 899] }
+        for (const [id, [amount, monthly]] of Object.entries(expected)) {
+          selectPlan(id)
+          await waitFor(() => total() === `${amount}₽`, 'six-month selection')
+          const row = host.querySelector(`input[value="${id}"]`).closest('label')
+          assert(row.querySelector('.plans-monthly').textContent.replace(/\s/g, '') === `≈${monthly}₽/мес`, 'Incorrect monthly approximation')
+          assert(row.querySelector('.plans-period-total').textContent.replace(/\s/g, '') === `${amount}₽за6мес`, 'Incorrect authoritative total')
+          assert(host.querySelector('.plans-pay').disabled, 'Selected payment is enabled')
+        }
+        selectPeriod(12)
+        await waitFor(() => total() === '9590₽', 'annual repricing')
+        assert(host.querySelector('input[name="plans-plan"]:checked').value === 'pro-plus', 'Period lost the selected plan')
+        assert(host.querySelector('.plans-payment-copy p').textContent === 'Pro Plus · 12 месяцев', 'Summary did not follow period')
+        click('Переключить на английский')
+        await waitFor(() => host.querySelector('#plans-title').textContent === 'Plans', 'Plans EN')
+        assert(total() === '9,590₽' && host.querySelector('input[name="plans-plan"]:checked').value === 'pro-plus', 'Language reset selection')
+        assert(host.querySelector('.plans-payment-copy p').textContent === 'Pro Plus · 12 months', 'Summary not translated')
+        assert(host.querySelector('.plans-features').textContent.includes('2 devices') && host.querySelector('.plans-features').textContent.includes('Bypass 50 GB'), 'Plan features not translated')
+        assert(host.querySelector('.plans-pay').textContent === 'Pay' && host.querySelector('#plans-payment-note').textContent === 'Payment will be available soon', 'Payment not translated')
+        assert(localStorage.getItem('lcp_language') === 'en', 'Plans bypassed global language persistence')
+        selectPeriod(1)
+        await waitFor(() => total() === '999₽', 'monthly repricing')
+        assert(!host.querySelector('.plans-period-total') && !host.querySelector('.plans-monthly').textContent.includes('≈'), 'Monthly price retained discount UI')
+        host.querySelector('.plans-pay').click()
+        assert(requests.length === 0, 'Plans made an API/payment request')
+        await mount('/plans', { fullApp: true, browser: true, reuseStorage: true })
+        await waitFor(() => host.querySelector('#plans-title'), 'Plans revisit')
+        assert(host.querySelector('#plans-title').textContent === 'Plans', 'Global language did not persist')
+        assert(!host.querySelector('input[name="plans-plan"]:checked') && host.querySelector('input[name="plans-period"]:checked').value === '1' && total() === '0₽', 'Purchase selection was persisted')
+        assert(requests.length === 0, 'Plans revisit made an API request')
       })
       await check('Profile without username retains a compact Telegram ID without a separator', async () => {
         await mount('/app', { browser: true, token: 'fixture-jwt', profile: { ...profile, username: null } })
