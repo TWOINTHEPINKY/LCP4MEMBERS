@@ -129,3 +129,52 @@
   .dashboard-overview { border-radius: 20px; }
   .dashboard-legal { gap: 0.25rem 1rem; }
 }
+
+/* Telegram owns the top chrome; retain its existing safe-area tokens. */
+.telegram-dashboard .dashboard-page { padding-top: calc(var(--safe-area-inset-top) + 1.5rem); }
+.dashboard-profile--telegram { position: relative; z-index: 2; flex-wrap: nowrap; }
+.profile-settings { position: relative; flex: 0 0 36px; height: 36px; }
+.profile-settings-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--moss-border);
+  border-radius: 10px;
+  background: var(--moss-dark);
+  color: var(--moss-text-bright);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.profile-settings-toggle svg { width: 22px; height: 22px; }
+.profile-settings-toggle:focus-visible { outline: 2px solid var(--moss-text-bright); outline-offset: 3px; }
+.profile-settings-panel {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 0.5rem);
+  z-index: 1;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: max-content;
+  padding: 6px;
+  border: 1px solid var(--moss-border);
+  border-radius: 14px;
+  background: var(--moss-dark);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 15%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(8px, -50%) scale(0.97);
+  transform-origin: right center;
+  transition: opacity 200ms ease, transform 200ms ease, visibility 200ms;
+}
+.profile-settings-panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(0, -50%) scale(1);
+}
+.profile-settings .header-control { width: 36px; height: 36px; flex-basis: 36px; border-radius: 10px; font-size: 0.75rem; }
+.profile-settings .theme-svg { width: 22px; height: 22px; }

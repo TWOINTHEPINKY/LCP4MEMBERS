@@ -1,5 +1,6 @@
 export const dashboardText = {
   ru: {
+    settings: 'Настройки аккаунта', closeSettings: 'Закрыть настройки',
     title: 'Личный кабинет', telegramAccount: 'Аккаунт Telegram',
     subscription: 'Текущая подписка', active: 'Активна', inactive: 'Неактивна',
     expires: 'Действует до', remaining: 'Осталось', days: 'дн.', renew: 'Продлить',
@@ -14,6 +15,7 @@ export const dashboardText = {
     legalLinks: 'Правовая информация',
   },
   en: {
+    settings: 'Account settings', closeSettings: 'Close settings',
     title: 'Your Account', telegramAccount: 'Telegram account',
     subscription: 'Current subscription', active: 'Active', inactive: 'Inactive',
     expires: 'Valid until', remaining: 'Remaining', days: 'days', renew: 'Renew',

@@ -8,7 +8,7 @@ function WidgetIcon({ children }) {
   return <svg className="dashboard-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 }
 
-export default function Dashboard({ user, lang }) {
+export default function Dashboard({ user, lang, profileControls }) {
   const text = dashboardText[lang]
   const { subscription, devices, balance, referrals } = dashboardMock
   const locale = lang === 'ru' ? 'ru-RU' : 'en-GB'
@@ -20,7 +20,7 @@ export default function Dashboard({ user, lang }) {
     <main className="dashboard-page" aria-labelledby="dashboard-title">
       <div className="dashboard-inner">
         <h1 id="dashboard-title" className="dashboard-title">{text.title}</h1>
-        <section className="dashboard-profile dashboard-glass" aria-label={text.telegramAccount}>
+        <section className={`dashboard-profile dashboard-glass${profileControls ? ' dashboard-profile--telegram' : ''}`} aria-label={text.telegramAccount}>
           <div className="dashboard-avatar" aria-hidden="true">{Array.from(user.first_name || '')[0]}</div>
           <div className="dashboard-identity">
             <h2>{displayName}</h2>
@@ -29,6 +29,7 @@ export default function Dashboard({ user, lang }) {
               <span className="dashboard-telegram-id">TG ID {user.id}</span>
             </p>
           </div>
+          {profileControls}
         </section>
 
         <div className="dashboard-overview dashboard-glass">

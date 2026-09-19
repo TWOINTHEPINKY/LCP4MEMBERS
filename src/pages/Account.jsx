@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LogoIcon from '../assets/icons/logo.svg?react'
 import Dashboard from './Dashboard'
-import { ApiError, apiRequest, authenticateTelegramWebApp, authError, authText, getTelegramInitData, getToken, saveToken, telegramAuthError } from '../lib/auth'
+import { ApiError, apiRequest, authenticateTelegramWebApp, authError, authText, getTelegramInitData, getToken, removeToken, saveToken, telegramAuthError } from '../lib/auth'
 
-export default function Account({ lang }) {
+export default function Account({ lang, profileControls }) {
   const navigate = useNavigate()
   const text = authText[lang]
   const [initData] = useState(getTelegramInitData)
@@ -67,7 +67,7 @@ export default function Account({ lang }) {
     return () => controller.abort()
   }, [navigate, attempt, initData])
 
-  if (user && !error) return <Dashboard user={user} lang={lang} />
+  if (user && !error) return <Dashboard user={user} lang={lang} profileControls={profileControls} />
 
   return (
     <div className="login-container fade-in visible">

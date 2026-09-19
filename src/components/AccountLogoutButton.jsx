@@ -1,17 +1,16 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authText, getTelegramInitData, removeToken } from '../lib/auth'
+import { authText, removeToken } from '../lib/auth'
 
 export default function AccountLogoutButton({ lang, onError }) {
   const navigate = useNavigate()
-  const [initData] = useState(getTelegramInitData)
   const text = authText[lang]
 
   function logout() {
     try {
       removeToken()
-      // /login auto-authenticates in Telegram, so logout must leave the auth routes.
-      navigate(initData ? '/' : '/login', { replace: true })
+      // Login already exchanges raw initData automatically inside Telegram,
+      // then replaces this route with /app. Browsers retain the manual login UI.
+      navigate('/login', { replace: true })
     } catch {
       onError(text.storage)
     }
