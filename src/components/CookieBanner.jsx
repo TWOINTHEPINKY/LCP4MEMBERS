@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react'
 
-export default function CookieBanner() {
+const translations = {
+  ru: { message: 'Мы используем cookies, чтобы сделать сайт удобнее. Продолжая пользоваться сайтом, вы соглашаетесь с их использованием.', accept: 'Принять' },
+  en: { message: 'We use cookies to improve your experience. By continuing, you agree to our use of cookies.', accept: 'Accept' },
+}
+
+export default function CookieBanner({ lang }) {
+  const text = translations[lang]
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -18,9 +24,9 @@ export default function CookieBanner() {
   return (
     <div className="cookie-banner">
       <div className="cookie-content">
-        <p>🍪 We use cookies to improve your experience. By continuing, you agree to our use of cookies.</p>
+        <p>🍪 {text.message}</p>
         <div className="cookie-buttons">
-          <button className="cookie-accept" onClick={accept}>Accept</button>
+          <button className="cookie-accept" onClick={accept}>{text.accept}</button>
         </div>
       </div>
     </div>
