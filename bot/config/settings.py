@@ -27,7 +27,7 @@ class Settings:
     admin_ids: frozenset[int] = field(default_factory=frozenset, repr=False)
 
     def web_url(self, page: str) -> str:
-        return f"{self.web_app_url}/#/{page.lstrip('/')}"
+        return f"{self.web_app_url}/{page.lstrip('/')}"
 
 
 @lru_cache(maxsize=1)

@@ -34,5 +34,5 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
 def get_menu_button() -> MenuButtonWebApp:
     return MenuButtonWebApp(
         text=CABINET_BUTTON,
-        web_app=WebAppInfo(url=get_settings().web_url("account")),
+        web_app=WebAppInfo(url=get_settings().web_url("app")),
     )
