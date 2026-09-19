@@ -3,11 +3,13 @@
 import asyncio
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import time
 import unittest
 from unittest.mock import patch
+from urllib.parse import parse_qsl, urlencode
 
 from fastapi.testclient import TestClient
 from jose import jwt
@@ -146,9 +148,124 @@ class AuthTests(unittest.TestCase):
                                     check.encode(), hashlib.sha256).hexdigest()
             self.assertEqual(self.client.post("/auth/telegram", json=data).status_code, 401)
 
+    def webapp_data(self, changes=None, omit=()):
+        data = {"auth_date": str(int(time.time())), "query_id": "test-query+with/slash=",
+                "user": json.dumps(self.user, ensure_ascii=False),
+                "signature": "additional-signed-field", "start_param": ""}
+        data.update(changes or {})
+        for key in omit:
+            data.pop(key, None)
+        check = "\n".join(f"{key}={data[key]}" for key in sorted(data))
+        secret = hmac.new(b"WebAppData", self.env["BOT_TOKEN"].encode(), hashlib.sha256).digest()
+        data["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+        # Deliberately transmit fields in a different order from the signed string.
+        return urlencode(list(reversed(list(data.items()))))
+
+    def assert_webapp_rejected(self, init_data):
+        response = self.client.post("/auth/telegram-webapp", json={"init_data": init_data})
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"detail": "invalid_telegram_webapp_data"})
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertEqual(response.headers["pragma"], "no-cache")
+
+    def test_webapp_login_and_me(self):
+        response = self.client.post("/auth/telegram-webapp", json={"init_data": self.webapp_data()})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertEqual(response.headers["pragma"], "no-cache")
+        data = response.json()
+        self.assertTrue(data["access_token"])
+        self.assertEqual(data["token_type"], "bearer")
+        self.assertEqual(data["user"], self.user)
+        claims = jwt.decode(data["access_token"], self.env["JWT_SECRET"], algorithms=["HS256"])
+        self.assertEqual(claims["sub"], str(self.user["id"]))
+        self.assertAlmostEqual(claims["exp"] - time.time(), 30 * 86400, delta=5)
+        profile = self.client.get("/auth/me", headers={"Authorization": f'Bearer {data["access_token"]}'})
+        self.assertEqual(profile.status_code, 200)
+        self.assertEqual(profile.json(), self.user)
+
+    def test_webapp_rejects_tampered_user_and_signed_extra_fields(self):
+        for key, value in (("user", json.dumps({**self.user, "id": 999999})),
+                           ("signature", "tampered"), ("start_param", "tampered")):
+            with self.subTest(field=key):
+                data = dict(parse_qsl(self.webapp_data(), keep_blank_values=True))
+                data[key] = value
+                self.assert_webapp_rejected(urlencode(data))
+
+    def test_webapp_rejects_bad_or_missing_hash(self):
+        for value in (None, "", "0" * 64, "not-a-hash", "я" * 64):
+            with self.subTest(hash_kind="missing" if value is None else "invalid"):
+                data = dict(parse_qsl(self.webapp_data(), keep_blank_values=True))
+                data.pop("hash")
+                if value is not None:
+                    data["hash"] = value
+                self.assert_webapp_rejected(urlencode(data))
+
+    def test_webapp_rejects_missing_user_or_auth_date(self):
+        for key in ("user", "auth_date"):
+            with self.subTest(field=key):
+                self.assert_webapp_rejected(self.webapp_data(omit=(key,)))
+
+    def test_webapp_rejects_malformed_user(self):
+        for user in ("{broken", "null", "[]", "{}", json.dumps({"id": True, "first_name": "Test"}),
+                     json.dumps({"id": "123", "first_name": "Test"}),
+                     json.dumps({"id": -1, "first_name": "Test"}),
+                     json.dumps({"id": 123, "first_name": ""})):
+            with self.subTest(user_kind=user[:12]):
+                self.assert_webapp_rejected(self.webapp_data({"user": user}))
+
+    def test_webapp_rejects_stale_future_or_invalid_auth_date(self):
+        for timestamp in (str(int(time.time()) - 86401), str(int(time.time()) + 3600),
+                          "", "NaN", "1.5", "9" * 400):
+            with self.subTest(timestamp_kind=timestamp[:12]):
+                self.assert_webapp_rejected(self.webapp_data({"auth_date": timestamp}))
+
+    def test_webapp_rejects_ambiguous_or_malformed_query(self):
+        signed = self.webapp_data()
+        for suffix in ("&hash=" + "0" * 64, "&user=%7B%7D", "&auth_date=1", "&broken",
+                       "&extra=%ZZ", "&extra=%FF", "&extra=%0Ainjected", "&=empty-key"):
+            with self.subTest(suffix_kind=suffix[:12]):
+                self.assert_webapp_rejected(signed + suffix)
+
+    def test_webapp_rejects_duplicate_fields_even_when_signature_would_still_match(self):
+        signed = self.webapp_data()
+        data = dict(parse_qsl(signed, keep_blank_values=True))
+        for key in ("hash", "user", "auth_date"):
+            with self.subTest(field=key):
+                self.assert_webapp_rejected(signed + "&" + urlencode({key: data[key]}))
+
+    def test_webapp_auth_date_boundaries(self):
+        now = int(time.time())
+        with patch("backend.app.auth.time.time", return_value=now):
+            for offset, status in ((-86400, 200), (-86401, 401), (30, 200), (31, 401)):
+                with self.subTest(offset=offset):
+                    response = self.client.post("/auth/telegram-webapp", json={
+                        "init_data": self.webapp_data({"auth_date": str(now + offset)})})
+                    self.assertEqual(response.status_code, status)
+
+    def test_webapp_rejects_widget_signature_algorithm(self):
+        data = dict(parse_qsl(self.webapp_data(), keep_blank_values=True))
+        data.pop("hash")
+        check = "\n".join(f"{key}={data[key]}" for key in sorted(data))
+        secret = hashlib.sha256(self.env["BOT_TOKEN"].encode()).digest()
+        data["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+        self.assert_webapp_rejected(urlencode(data))
+
+    def test_webapp_rejects_malformed_body_without_echoing_input(self):
+        for body in ({}, {"init_data": None}, {"init_data": 123}, {"init_data": ""},
+                     {"init_data": "x" * 16385}, [], "not-an-object"):
+            response = self.client.post("/auth/telegram-webapp", json=body)
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.json(), {"detail": "invalid_telegram_webapp_data"})
+        response = self.client.post("/auth/telegram-webapp", content="{broken",
+                                    headers={"Content-Type": "application/json"})
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"detail": "invalid_telegram_webapp_data"})
+
     def test_cors_health_and_plans(self):
         for origin in ("http://localhost:5173", "https://twointhepinky.github.io"):
             for path, method, header in (("/auth/bot/start", "POST", "content-type"),
+                                         ("/auth/telegram-webapp", "POST", "content-type"),
                                          ("/auth/bot/status/id", "GET", "x-login-token"),
                                          ("/auth/me", "GET", "authorization")):
                 response = self.client.options(path, headers={"Origin": origin,

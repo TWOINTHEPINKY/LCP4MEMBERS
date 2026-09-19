@@ -1,14 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LogoIcon from '../assets/icons/logo.svg?react'
-import { apiRequest, authError, authText, readChallenge, rememberChallenge, saveToken } from '../lib/auth'
+import { ApiError, apiRequest, authenticateTelegramWebApp, authError, authText, getTelegramInitData, readChallenge, rememberChallenge, saveToken, telegramAuthError } from '../lib/auth'
 
 export default function Login({ lang }) {
   const navigate = useNavigate()
   const text = authText[lang]
-  const [challenge, setChallenge] = useState(readChallenge)
-  const [phase, setPhase] = useState('idle')
+  const [initData] = useState(getTelegramInitData)
+  const [challenge, setChallenge] = useState(() => initData ? null : readChallenge())
+  const [phase, setPhase] = useState(() => initData ? 'authenticating' : 'idle')
+  const [attempt, setAttempt] = useState(0)
   const startRequest = useRef(null)
+
+  useEffect(() => {
+    if (!initData) return
+    let active = true
+    setPhase('authenticating')
+    authenticateTelegramWebApp(initData).then(result => {
+      if (!active) return
+      try { saveToken(result.access_token) } catch { throw new ApiError('storage') }
+      navigate('/account', { replace: true })
+    }).catch(error => {
+      if (active) setPhase(telegramAuthError(error))
+    })
+    return () => { active = false }
+  }, [initData, navigate, attempt])
 
   useEffect(() => () => {
     startRequest.current?.controller.abort()
@@ -16,7 +32,7 @@ export default function Login({ lang }) {
   }, [])
 
   useEffect(() => {
-    if (!challenge) return
+    if (initData || !challenge) return
     const controller = new AbortController()
     let timer
     function finish(nextPhase) {
@@ -59,10 +75,10 @@ export default function Login({ lang }) {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [challenge, navigate])
+  }, [challenge, initData, navigate])
 
   async function startLogin() {
-    if (startRequest.current || challenge) return
+    if (initData || startRequest.current || challenge) return
     const controller = new AbortController()
     // Reserve a tab during the user gesture, before awaiting the backend.
     // A visible link below also works when the browser blocks popups.
@@ -97,10 +113,19 @@ export default function Login({ lang }) {
         <div className="login-header">
           <LogoIcon className="login-logo" />
           <h2 id="login-title">{text.title}</h2>
-          <p>{text.description}</p>
+          <p>{initData ? text.miniAppDescription : text.description}</p>
         </div>
 
-        {challenge ? (
+        {initData ? (
+          <div className="auth-status" role={phase === 'authenticating' ? 'status' : 'alert'} aria-live="polite">
+            <p>{text[phase]}</p>
+            {phase !== 'authenticating' && (
+              <button type="button" className="custom-telegram-btn" onClick={() => setAttempt(value => value + 1)}>
+                {text.retry}
+              </button>
+            )}
+          </div>
+        ) : challenge ? (
           <>
             <div className="auth-status" role="status" aria-live="polite">
               <p>{text.open}</p>
