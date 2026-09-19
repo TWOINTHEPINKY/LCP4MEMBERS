@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { memo, useState, useEffect, useCallback, useRef } from 'react'
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
 
@@ -80,7 +80,8 @@ const translations = {
   }
 }
 
-const MatrixRain = () => {
+// Header visibility changes must not reconcile every unchanged Matrix column.
+const MatrixRain = memo(function MatrixRain() {
   const [columns, setColumns] = useState([])
   useEffect(() => {
     const cols = []
@@ -108,7 +109,7 @@ const MatrixRain = () => {
       ))}
     </div>
   )
-}
+})
 
 const GreenParticles = ({ particles }) => (
   <>

@@ -28,12 +28,13 @@ export function useDashboardHeader(enabled, contentRef) {
     let frame = null
     function update() {
       frame = null
+      const wasHidden = scrollState.current.hidden
       const next = nextHeaderScroll(scrollState.current, window.scrollY)
       // Keep keyboard-focused controls available while the user operates them.
       const focused = document.activeElement
       if (contentRef.current?.contains(focused) && focused.matches(':focus-visible')) next.hidden = false
       scrollState.current = next
-      setHidden(next.hidden)
+      if (next.hidden !== wasHidden) setHidden(next.hidden)
     }
     function onScroll() {
       if (frame === null) frame = requestAnimationFrame(update)

@@ -41,8 +41,8 @@ export default function ProfileSettings({ lang, children }) {
         aria-label={open ? text.closeSettings : text.settings} title={open ? text.closeSettings : text.settings}
         onClick={() => setOpen(value => !value)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="m9 3-.5 3-2 1.2L3.7 6l-2 3.5L4 11v2l-2.3 1.5 2 3.5 2.8-1.2 2 1.2.5 3h4l.5-3 2-1.2 2.8 1.2 2-3.5L18 13v-2l2.3-1.5-2-3.5-2.8 1.2-2-1.2L13 3Z" />
-          <circle cx="11" cy="12" r="3" />
+          <path d="m10 3-.5 3-2 1.2L4.7 6l-2 3.5L5 11v2l-2.3 1.5 2 3.5 2.8-1.2 2 1.2.5 3h4l.5-3 2-1.2 2.8 1.2 2-3.5L19 13v-2l2.3-1.5-2-3.5-2.8 1.2-2-1.2L14 3Z" />
+          <circle cx="12" cy="12" r="3" />
         </svg>
       </button>
       <div id={panelId} className={`profile-settings-panel${open ? ' is-open' : ''}`} role="group" aria-label={text.settings}

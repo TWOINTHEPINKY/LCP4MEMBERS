@@ -131,7 +131,7 @@
 }
 
 /* Telegram owns the top chrome; retain its existing safe-area tokens. */
-.telegram-dashboard .dashboard-page { padding-top: calc(var(--safe-area-inset-top) + 1.5rem); }
+.telegram-dashboard .dashboard-page { padding-top: calc(var(--safe-area-inset-top) + 1.5rem + 20px); }
 .dashboard-profile--telegram { position: relative; z-index: 2; flex-wrap: nowrap; }
 .profile-settings { position: relative; flex: 0 0 36px; height: 36px; }
 .profile-settings-toggle {
