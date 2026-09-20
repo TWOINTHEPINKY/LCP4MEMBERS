@@ -212,7 +212,7 @@ function App() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const currentPath = pathname.replace(/\/+$/, '') || '/'
-  const showGlobalHeader = currentPath === '/' || currentPath === '/login'
+  const showGlobalHeader = !telegramInitData && (currentPath === '/' || currentPath === '/login')
   const isInternalPage = currentPath === '/app' || currentPath === '/plans' || dashboardPlaceholderRoutes.some(section => currentPath === `/${section}`)
 
   const t = translations[lang]

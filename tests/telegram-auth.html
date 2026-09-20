@@ -13,6 +13,7 @@
     import { MemoryRouter, Routes, Route, Navigate, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
     import Login from '../src/pages/Login.jsx'
     import Account from '../src/pages/Account.jsx'
+    import Plans from '../src/pages/Plans.jsx'
     import AccountLogoutButton from '../src/components/AccountLogoutButton.jsx'
     import App from '../src/App.jsx'
     import SupportAction from '../src/components/SupportAction.jsx'
@@ -111,7 +112,7 @@
         h(Probe), options.fullApp ? h(App) : h(Routes, null,
           h(Route, { path: '/login', element: h(Login, { lang: options.lang || 'en' }) }),
           h(Route, { path: '/app', element: h(Fragment, null,
-            h('header', null, h(AccountLogoutButton, { lang: options.lang || 'en', onError: error => logoutErrors.push(error) })),
+            h('div', null, h(AccountLogoutButton, { lang: options.lang || 'en', onError: error => logoutErrors.push(error) })),
             h(Account, { lang: options.lang || 'en' }),
           ) }),
           h(Route, { path: '/account', element: h(Navigate, { to: '/app', replace: true }) }),
@@ -130,6 +131,14 @@
     window.mountPlansForFunctionalChecks = async lang => {
       await mount('/plans', { fullApp: true, browser: true, savedLanguage: lang })
       await waitFor(() => host.querySelector('#plans-title'), 'Plans functional fixture')
+    }
+    function internalBack() {
+      const link = host.querySelector('.internal-page-title .internal-back')
+      assert(link?.getAttribute('href') === '/app' && link.getAttribute('aria-label'), 'Missing accessible internal back link')
+      assert(link.nextElementSibling?.tagName === 'H1', 'Back arrow is not beside the title')
+      const bounds = link.getBoundingClientRect()
+      assert(bounds.width >= 44 && bounds.height >= 44, 'Back link touch target is too small')
+      return link
     }
     function watchForHeader() {
       let rendered = Boolean(host.querySelector('header'))
@@ -243,7 +252,7 @@
         assert(!locations.includes('/') && navigationType === 'REPLACE', 'Logout exposed landing or added history')
         noChallenge()
       })
-      await check('Browser header logout clears JWT and replaces the route with /login', async () => {
+      await check('Browser logout clears JWT and replaces the route with /login', async () => {
         await mount('/app', { browser: true, token: 'fixture-jwt' })
         await waitFor(loaded, 'browser logout setup')
         click('Logout')
@@ -278,9 +287,12 @@
         assert(host.querySelector('#dashboard-title').textContent === 'Личный кабинет', 'Default is not RU')
         assert(host.querySelector('.cookie-accept')?.textContent === 'Принять', 'Cookie banner did not use RU')
         assert(!localStorage.getItem('lcp_language'), 'Implicit default was persisted')
-        assert(host.querySelector('header .logout-btn')?.title === 'Выйти', 'Missing RU header logout')
-        assert(!host.querySelector('.dashboard-profile button'), 'Profile contains controls')
+        assert(!host.querySelector('header'), 'Browser dashboard retained global header')
+        assert(host.querySelector('.profile-settings .logout-btn')?.title === 'Выйти', 'Missing RU profile logout')
+        assert(!host.querySelector('.internal-back'), 'Dashboard has an unnecessary back arrow')
         const theme = localStorage.getItem('theme')
+        click('Настройки аккаунта')
+        await waitFor(() => !host.querySelector('.profile-settings-panel').inert, 'browser language controls')
         click('Переключить на английский')
         await waitFor(() => document.documentElement.lang === 'en', 'EN toggle')
         assert(localStorage.getItem('lcp_language') === 'en', 'EN not persisted')
@@ -322,19 +334,17 @@
         host.querySelector('a[href="/plans"]').click()
         await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'real Plans page')
         assert(!host.querySelector('#placeholder-title') && host.querySelector('.plans-options'), 'Plans is still a placeholder')
-        assert(host.querySelector('header') && host.querySelector('.dashboard-legal') && host.querySelector('.matrix-rain'), 'Plans lost the shared layout')
-        assert(!host.querySelector('header').hasAttribute('data-hidden'), 'Plans acquired dashboard auto-hide')
-        click('Кабинет')
-        await waitFor(loaded, 'Plans header return')
+        assert(!host.querySelector('header') && host.querySelector('.dashboard-legal') && host.querySelector('.matrix-rain'), 'Plans internal shell changed')
+        internalBack().click()
+        await waitFor(loaded, 'Plans back arrow return')
         for (const path of ['/devices', '/referrals', '/terms', '/privacy']) {
           const link = host.querySelector(`a[href="${path}"]`)
           assert(link, `Missing dashboard link ${path}`)
           link.click()
           await waitFor(() => currentPath === path && host.querySelector('#placeholder-title'), path)
           assert(host.textContent.includes('Раздел готовится'), 'Missing placeholder notice')
-          assert(host.querySelector('header') && host.querySelector('footer') && host.querySelector('.matrix-rain'), 'Placeholder lost site layout')
-          assert(!host.querySelector('header .logout-btn'), 'Non-dashboard header changed')
-          host.querySelector('.dashboard-placeholder a[href="/app"]').click()
+          assert(!host.querySelector('header') && host.querySelector('footer') && host.querySelector('.matrix-rain'), 'Placeholder internal shell changed')
+          internalBack().click()
           await waitFor(loaded, 'placeholder return')
         }
         assert(requests.every(request => request.path === '/auth/me'), 'Placeholder requested business data')
@@ -394,7 +404,7 @@
         await waitFor(() => panel.inert && localStorage.getItem('theme') !== oldTheme, 'theme closes controls')
         assert(document.body.dataset.theme === localStorage.getItem('theme'), 'Theme persistence differs from UI')
       })
-      await check('Full App Telegram gear logout reauthenticates without public landing or a loop', async () => {
+      await check('Full App Telegram gear logout reauthenticates without public header, landing or a loop', async () => {
         click('Account settings')
         await waitFor(() => !host.querySelector('.profile-settings-panel').inert, 'logout controls open')
         const stopWatchingHeader = watchForHeader()
@@ -402,15 +412,15 @@
           click('Logout')
           assert(!localStorage.getItem(tokenKey), 'Full App logout retained old JWT')
           await waitFor(() => currentPath === '/login', 'full App reauthentication')
-          assert(!host.querySelector('header'), 'Global header appeared during Telegram reauthentication')
+          assert(!host.querySelector('header'), 'Public header rendered during Telegram reauthentication')
           await waitFor(loaded, 'full App renewed session')
           await pause(150)
           assert(localStorage.getItem(tokenKey) && count('/auth/telegram-webapp') === 2, 'Full App auth count or JWT incorrect')
           assert(!locations.includes('/') && !host.querySelector('.hero'), 'Full App logout exposed landing')
           assert(navigationType === 'REPLACE' && !host.querySelector('header'), 'Wrong restored dashboard')
+          assert(!stopWatchingHeader(), 'Public header flashed during Telegram logout')
           assert(host.querySelector('.profile-settings-panel').inert, 'Logout left panel open')
           noChallenge()
-          assert(!stopWatchingHeader(), 'Global header flashed during Telegram logout')
         } finally { stopWatchingHeader() }
       })
       await check('Failed Telegram logout exchange has explicit retry and never falls through to landing', async () => {
@@ -424,16 +434,16 @@
         await pause(150)
         assert(currentPath === '/login' && count('/auth/telegram-webapp') === 1 && !localStorage.getItem(tokenKey), 'Failed logout loop or retained token')
         assert(!locations.includes('/') && !host.querySelector('.hero'), 'Failed logout exposed landing')
-        assert(!host.querySelector('header'), 'Telegram login error displayed the global header')
+        assert(!host.querySelector('header'), 'Public header rendered on Telegram auth error')
         config.fail = false
         click('Попробовать снова')
         await waitFor(loaded, 'logout explicit retry')
         assert(count('/auth/telegram-webapp') === 2, 'Logout retry count')
         noChallenge()
       })
-      await check('Telegram root replaces /app without ever rendering the landing page', async () => {
-        const stopWatchingHeader = watchForHeader()
+      await check('Telegram root replaces /app without ever rendering the public header or landing page', async () => {
         let renderedLanding = false
+        const stopWatchingHeader = watchForHeader()
         const observer = new MutationObserver(records => {
           for (const record of records) for (const node of record.addedNodes) {
             if (node.nodeType === Node.ELEMENT_NODE && (node.matches('.hero') || node.querySelector('.hero'))) renderedLanding = true
@@ -446,38 +456,37 @@
           await pause(150)
           assert(navigationType === 'REPLACE' && !renderedLanding, 'Root flashed landing or pushed history')
           assert(count('/auth/telegram-webapp') === 1, 'Root redirect caused an auth loop')
-          assert(!stopWatchingHeader(), 'Global header flashed during Telegram root redirect')
+          assert(!host.querySelector('header'), 'Telegram root redirect retained the global header on /app')
+          assert(!stopWatchingHeader(), 'Public header flashed during Telegram root redirect')
           noChallenge()
         } finally { observer.disconnect(); stopWatchingHeader() }
       })
-      await check('Direct Telegram /login/ hides the global header; placeholders keep it', async () => {
-        const stopWatchingHeader = watchForHeader()
-        try {
-          await mount('/login/', { fullApp: true, fail: 401 })
-          await waitFor(failed, 'direct Telegram login')
-          assert(currentPath === '/login/' && !stopWatchingHeader(), 'Direct Telegram login displayed the global header')
-          navigate('/plans')
-          await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'Telegram Plans page')
-          assert(host.querySelector('header') && !host.querySelector('header').hasAttribute('data-hidden'), 'Telegram Plans header changed')
-          assert(!host.querySelector('.profile-settings') && host.querySelector('.dashboard-legal'), 'Plans changed Telegram chrome or footer')
-          for (const path of ['/devices', '/referrals', '/terms', '/privacy']) {
-            navigate(path)
-            await waitFor(() => currentPath === path && host.querySelector('#placeholder-title'), 'Telegram placeholder')
-            assert(host.querySelector('header'), 'Telegram placeholder header was suppressed')
-          }
-        } finally { stopWatchingHeader() }
-      })
-      await check('Ordinary browser /login keeps the global header', async () => {
-        await mount('/login', { fullApp: true, browser: true })
-        await waitFor(() => host.querySelector('.login-card'), 'browser direct login')
-        assert(currentPath === '/login' && host.querySelector('header'), 'Browser login header was suppressed')
-        assert(count('/auth/telegram-webapp') === 0, 'Browser login started Mini App authentication')
+      await check('Telegram login and internal routes omit the public header; internal children keep their back arrows', async () => {
+        await mount('/login/', { fullApp: true, fail: 401 })
+        await waitFor(failed, 'direct Telegram login')
+        assert(currentPath === '/login/' && !host.querySelector('header'), 'Public header rendered on Telegram login')
+        config.fail = false
+        for (const path of ['/plans', '/devices', '/referrals', '/terms', '/privacy']) {
+          navigate(path)
+          await waitFor(() => currentPath === path && host.querySelector('.internal-page-title'), 'Telegram internal child')
+          assert(!host.querySelector('header') && host.querySelector('.dashboard-legal'), 'Telegram child shell changed')
+          assert(!host.querySelector('.profile-settings'), 'Profile controls leaked to a child page')
+          internalBack().click()
+          await waitFor(loaded, 'Telegram back arrow return')
+          assert(!host.querySelector('header') && host.querySelector('.profile-settings'), 'Telegram dashboard shell changed')
+        }
       })
       for (const [label, telegram] of [
         ['no SDK', undefined], ['SDK only', { WebApp: {} }],
         ['unsafe identity only', { WebApp: { initDataUnsafe: { user: { id: 123456 } } } }],
         ['whitespace raw data', { WebApp: { initData: '   ' } }],
       ]) {
+        await check(`Ordinary browser /login keeps the global header with ${label}`, async () => {
+          await mount('/login', { fullApp: true, browser: true, telegram })
+          await waitFor(() => host.querySelector('.login-card'), 'browser direct login')
+          assert(currentPath === '/login' && host.querySelector('header'), 'Browser login header was suppressed')
+          assert(count('/auth/telegram-webapp') === 0, 'Browser login started Mini App authentication')
+        })
         await check(`Ordinary browser root stays public with ${label}`, async () => {
           await mount('/', { fullApp: true, browser: true, telegram })
           await waitFor(() => host.querySelector('.hero'), 'browser landing')
@@ -486,46 +495,62 @@
           assert(requests.length === 0, 'Browser root initiated authentication')
         })
       }
-      await check('Browser dashboard header hides/restores without reflow; public header stays unchanged', async () => {
-        const descriptor = Object.getOwnPropertyDescriptor(window, 'scrollY')
-        let y = 0
-        Object.defineProperty(window, 'scrollY', { configurable: true, get: () => y })
-        const scroll = async next => { y = next; window.dispatchEvent(new Event('scroll')); await pause(50) }
-        try {
-          await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt' })
-          await waitFor(loaded, 'browser auto-header')
-          const header = host.querySelector('header')
-          const content = header.querySelector('.header-inner')
-          const top = host.querySelector('.dashboard-page').getBoundingClientRect().top
-          assert(header.dataset.hidden === 'false' && !content.inert, 'Header not initially visible')
-          assert(header.querySelectorAll('.header-control').length === 3 && !host.querySelector('.profile-settings'), 'Browser controls moved')
-          await scroll(100)
-          assert(header.dataset.hidden === 'true' && content.inert, 'Downward scrolling did not hide header')
-          await pause(250)
-          assert(getComputedStyle(content).opacity === '0' && getComputedStyle(content).display !== 'none', 'Header did not use opacity')
-          assert(parseFloat(getComputedStyle(header, '::before').height) <= 18.1, 'Hidden header left a large blur band')
-          assert(host.querySelector('.dashboard-page').getBoundingClientRect().top === top, 'Header caused layout shift')
-          await scroll(99)
-          await scroll(100)
-          assert(header.dataset.hidden === 'true', 'Tiny movements caused jitter')
-          await scroll(88)
-          assert(header.dataset.hidden === 'false' && !content.inert, 'Upward scrolling did not restore header')
-          await scroll(120)
-          await scroll(20)
-          assert(header.dataset.hidden === 'false', 'Near top did not restore header')
-          navigate('/')
-          await waitFor(() => host.querySelector('.hero'), 'public header regression')
-          await scroll(200)
-          const publicHeader = host.querySelector('header')
-          assert(!publicHeader.hasAttribute('data-hidden') && !publicHeader.classList.contains('dashboard-browser-header'), 'Public header acquired auto-hide')
-          assert(!publicHeader.querySelector('.header-inner').inert, 'Public controls became inert')
-        } finally {
-          if (descriptor) Object.defineProperty(window, 'scrollY', descriptor)
-          else delete window.scrollY
-        }
+      await check('Browser profile gear preserves theme actions and logout returns to public login', async () => {
+        await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt' })
+        await waitFor(loaded, 'browser profile gear')
+        assert(!host.querySelector('header') && !host.querySelector('.internal-back'), 'Wrong browser dashboard shell')
+        const gear = host.querySelector('.profile-settings-toggle')
+        const panel = host.querySelector('.profile-settings-panel')
+        assert(gear && host.querySelectorAll('.profile-settings-toggle').length === 1, 'Browser gear missing or duplicated')
+        assert(panel.inert && panel.querySelectorAll('button').length === 3, 'Wrong browser settings controls')
+        const height = host.querySelector('.dashboard-profile').getBoundingClientRect().height
+        gear.click()
+        await waitFor(() => !panel.inert, 'browser gear opens')
+        await pause(250)
+        assert(host.querySelector('.dashboard-profile').getBoundingClientRect().height === height, 'Browser settings caused reflow')
+        assert(panel.getBoundingClientRect().right < gear.getBoundingClientRect().left, 'Browser controls did not open left')
+        const oldTheme = localStorage.getItem('theme')
+        panel.querySelector('.theme-btn').click()
+        await waitFor(() => panel.inert && localStorage.getItem('theme') !== oldTheme, 'browser theme action')
+        assert(document.activeElement === gear, 'Browser action lost focus')
+        gear.click()
+        await waitFor(() => !panel.inert, 'browser logout controls')
+        click('Выйти')
+        assert(!localStorage.getItem(tokenKey), 'Browser gear logout retained JWT')
+        await waitFor(() => currentPath === '/login' && host.querySelector('.login-card'), 'browser gear logout')
+        assert(host.querySelector('header') && navigationType === 'REPLACE', 'Browser logout lost public login header or replace semantics')
+        assert(count('/auth/telegram-webapp') === 0 && !locations.includes('/'), 'Browser logout changed auth flow')
       })
+      for (const browser of [true, false]) {
+        await check(`${browser ? 'Browser' : 'Telegram'} internal pages share safe-area spacing without reserving the old header`, async () => {
+          await mount('/app', { fullApp: true, browser, token: 'fixture-jwt' })
+          await waitFor(loaded, 'internal spacing fixture')
+          const style = document.documentElement.style
+          const properties = ['--header-height', '--tg-content-safe-area-inset-top']
+          const previous = properties.map(name => [name, style.getPropertyValue(name), style.getPropertyPriority(name)])
+          try {
+            style.setProperty('--header-height', '999px')
+            if (!browser) style.setProperty('--tg-content-safe-area-inset-top', '72px')
+            const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+            const expected = browser ? rem * (matchMedia('(max-width: 640px)').matches ? 1.75 : 2.5) : 72 + rem * 1.5 + 20
+            for (const path of ['/app', '/plans', '/devices', '/referrals', '/terms', '/privacy']) {
+              navigate(path)
+              await waitFor(() => currentPath === path && host.querySelector('.dashboard-page h1'), 'internal page spacing')
+              const page = host.querySelector('.dashboard-page')
+              assert(!host.querySelector('header'), `Internal header rendered on ${path}`)
+              assert(Math.abs(parseFloat(getComputedStyle(page).paddingTop) - expected) < 0.1, `Incorrect top spacing on ${path}`)
+              assert(Boolean(host.querySelector('.internal-shell--telegram')) === !browser, 'Telegram spacing leaked into browser')
+            }
+          } finally {
+            for (const [name, value, priority] of previous) {
+              if (value) style.setProperty(name, value, priority)
+              else style.removeProperty(name)
+            }
+          }
+        })
+      }
       await check('Plans selects periods/plans, recalculates totals and never enables or requests payment', async () => {
-        await mount('/plans', { fullApp: true, browser: true })
+        await mount('/plans', { fullApp: true, browser: true, token: 'fixture-jwt' })
         await waitFor(() => host.querySelector('#plans-title'), 'Plans initial state')
         const total = () => host.querySelector('.plans-payment-total').textContent.replace(/\s/g, '')
         const selectPeriod = months => host.querySelector(`input[name="plans-period"][value="${months}"]`).click()
@@ -553,23 +578,47 @@
         await waitFor(() => total() === '9590₽', 'annual repricing')
         assert(host.querySelector('input[name="plans-plan"]:checked').value === 'pro-plus', 'Period lost the selected plan')
         assert(host.querySelector('.plans-payment-copy p').textContent === 'Pro Plus · 12 месяцев', 'Summary did not follow period')
-        click('Переключить на английский')
-        await waitFor(() => host.querySelector('#plans-title').textContent === 'Plans', 'Plans EN')
-        assert(total() === '9,590₽' && host.querySelector('input[name="plans-plan"]:checked').value === 'pro-plus', 'Language reset selection')
-        assert(host.querySelector('.plans-payment-copy p').textContent === 'Pro Plus · 12 months', 'Summary not translated')
-        assert(host.querySelector('.plans-features').textContent.includes('2 devices') && host.querySelector('.plans-features').textContent.includes('Bypass 50 GB'), 'Plan features not translated')
-        assert(host.querySelector('.plans-pay').textContent === 'Pay' && host.querySelector('#plans-payment-note').textContent === 'Payment will be available soon', 'Payment not translated')
-        assert(localStorage.getItem('lcp_language') === 'en', 'Plans bypassed global language persistence')
         selectPeriod(1)
         await waitFor(() => total() === '999₽', 'monthly repricing')
         assert(!host.querySelector('.plans-period-total') && !host.querySelector('.plans-monthly').textContent.includes('≈'), 'Monthly price retained discount UI')
         host.querySelector('.plans-pay').click()
         assert(requests.length === 0, 'Plans made an API/payment request')
+        internalBack().click()
+        await waitFor(loaded, 'return to settings for language')
+        click('Настройки аккаунта')
+        await waitFor(() => !host.querySelector('.profile-settings-panel').inert, 'language settings open')
+        click('Переключить на английский')
+        await waitFor(() => document.documentElement.lang === 'en', 'global language change')
+        assert(localStorage.getItem('lcp_language') === 'en', 'Plans bypassed global language persistence')
+        host.querySelector('a[href="/plans"]').click()
+        await waitFor(() => host.querySelector('#plans-title')?.textContent === 'Plans', 'Plans EN')
+        assert(!host.querySelector('input[name="plans-plan"]:checked') && total() === '0₽', 'Purchase selection was persisted across navigation')
+        const beforePlanActions = requests.length
+        selectPlan('pro-plus')
+        selectPeriod(12)
+        await waitFor(() => total() === '9,590₽', 'EN annual repricing')
+        assert(host.querySelector('.plans-payment-copy p').textContent === 'Pro Plus · 12 months', 'Summary not translated')
+        assert(host.querySelector('.plans-features').textContent.includes('2 devices') && host.querySelector('.plans-features').textContent.includes('Bypass 50 GB'), 'Plan features not translated')
+        assert(host.querySelector('.plans-pay').textContent === 'Pay' && host.querySelector('#plans-payment-note').textContent === 'Payment will be available soon', 'Payment not translated')
+        host.querySelector('.plans-pay').click()
+        assert(requests.length === beforePlanActions, 'Plans made an API/payment request')
         await mount('/plans', { fullApp: true, browser: true, reuseStorage: true })
         await waitFor(() => host.querySelector('#plans-title'), 'Plans revisit')
         assert(host.querySelector('#plans-title').textContent === 'Plans', 'Global language did not persist')
         assert(!host.querySelector('input[name="plans-plan"]:checked') && host.querySelector('input[name="plans-period"]:checked').value === '1' && total() === '0₽', 'Purchase selection was persisted')
         assert(requests.length === 0, 'Plans revisit made an API request')
+      })
+      await check('Plans preserves the current selection when its language prop changes', async () => {
+        const renderPlans = lang => root.render(h(MemoryRouter, null, h(Plans, { lang })))
+        renderPlans('ru')
+        await waitFor(() => host.querySelector('#plans-title')?.textContent === 'Тарифы', 'isolated RU Plans')
+        host.querySelector('input[name="plans-plan"][value="plus"]').click()
+        host.querySelector('input[name="plans-period"][value="6"]').click()
+        await waitFor(() => host.querySelector('.plans-payment-total').textContent.replace(/\s/g, '') === '3235₽', 'isolated selection')
+        renderPlans('en')
+        await waitFor(() => host.querySelector('#plans-title').textContent === 'Plans', 'isolated EN Plans')
+        assert(host.querySelector('input[name="plans-plan"]:checked').value === 'plus' && host.querySelector('input[name="plans-period"]:checked').value === '6', 'Language prop reset purchase state')
+        assert(host.querySelector('.plans-payment-total').textContent.replace(/\s/g, '') === '3,235₽', 'Language changed the selected total')
       })
       await check('Profile without username retains a compact Telegram ID without a separator', async () => {
         await mount('/app', { browser: true, token: 'fixture-jwt', profile: { ...profile, username: null } })
