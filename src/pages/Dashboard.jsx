@@ -21,7 +21,9 @@ export default function Dashboard({ user, lang, profileControls }) {
       <div className="dashboard-inner">
         <h1 id="dashboard-title" className="dashboard-title">{text.title}</h1>
         <section className={`dashboard-profile dashboard-glass${profileControls ? ' dashboard-profile--settings' : ''}`} aria-label={text.telegramAccount}>
-          <div className="dashboard-avatar" aria-hidden="true">{Array.from(user.first_name || '')[0]}</div>
+          <div className="dashboard-avatar" aria-hidden={user.photo_url ? undefined : 'true'}>
+            {user.photo_url ? <img src={user.photo_url} alt="" referrerPolicy="no-referrer" /> : Array.from(user.first_name || '')[0]}
+          </div>
           <div className="dashboard-identity">
             <h2>{displayName}</h2>
             <p className="dashboard-profile-meta">
@@ -54,7 +56,7 @@ export default function Dashboard({ user, lang, profileControls }) {
             <section className="dashboard-widget" aria-labelledby="devices-title">
               <div className="dashboard-widget-heading">
                 <WidgetIcon><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 21h8m-4-5v5" /></WidgetIcon>
-                <h3 id="devices-title">{text.devices}</h3>
+                <h3 id="devices-title">{text.deviceStats}</h3>
               </div>
               <p className="dashboard-device-count dashboard-value" aria-label={`${text.connected}: ${devices.items.length} / ${devices.limit}`}>
                 {devices.items.length}<span> / {devices.limit}</span>

@@ -33,8 +33,9 @@
 | `bot/.env` | `BOT_INTERNAL_SECRET` | Точное совпадение с backend |
 | `bot/.env` | `BACKEND_INTERNAL_URL` | `http://127.0.0.1:8000` для локального запуска |
 | `bot/.env` | `WEB_APP_URL` | `https://lcpn3twork.com`, без пути, hash/query |
-| `bot/.env` | `SUPPORT_TELEGRAM_URL` | Существующая ссылка поддержки `https://t.me/<username>` |
+| `bot/.env` | `SUPPORT_TELEGRAM_URL` | Старый fallback для совместимости; кнопка поддержки теперь открывает Mini App `/support` |
 | `bot/.env` | `ADMIN_IDS` | Существующие числовые ID через запятую; пустое значение отключает админку |
+| `backend/.env` / окружение | `SUPPORT_DB_PATH` | Необязательно; путь к SQLite support-базе, по умолчанию `backend/data/support.sqlite3` |
 | `.env` (корень) | `VITE_API_URL` | В production `/api` на том же домене; локально `http://localhost:8000` |
 | `.env` (корень) / окружение сборки | `VITE_SUPPORT_TELEGRAM_URL` | Публичный адрес поддержки `https://t.me/<username>`; используйте тот же адрес, что в `SUPPORT_TELEGRAM_URL` бота |
 
@@ -42,9 +43,9 @@
 
 `VITE_API_URL` не секрет: Vite включает его в frontend при сборке. В dev доступен fallback `http://localhost:8000`; в production fallback отсутствует, и при пустой настройке UI сообщает о недоступной конфигурации. Для production задайте `VITE_API_URL=/api` при обычной сборке `npm run build`; API и frontend доступны на `https://lcpn3twork.com`.
 
-`VITE_SUPPORT_TELEGRAM_URL` также публична и встраивается Vite при сборке. Задайте её в корневом frontend `.env` или в окружении production-сборки до `npm run build`; изменение требует пересборки (в dev — перезапуска Vite). Frontend принимает только HTTPS-ссылку на один username в `t.me`, без query, fragment, дополнительных путей и credentials. Пустое или неверное значение оставляет действие поддержки отключённым. В Telegram используется `WebApp.openTelegramLink`, если доступен; в браузере — обычная ссылка в новой вкладке с `noopener noreferrer`. Переносить `BOT_TOKEN` и другие секреты в `VITE_*` нельзя; настройки бота frontend автоматически не читает.
+Поддержка открывается на странице `/support` внутри кабинета и Telegram Web App. Пользователь создаёт обращение и получает ответы в переписке; бот забирает новые обращения через internal API и уведомляет `ADMIN_IDS`. Администратор отвечает кнопкой `Ответить` прямо в Telegram. `VITE_SUPPORT_TELEGRAM_URL` и `SUPPORT_TELEGRAM_URL` больше не нужны для нового потока, но оставлены для совместимости старых конфигураций.
 
-Бот формирует кнопку входа с `/login` и кнопку меню «Кабинет» с `/app`. При последующем обновлении production проверьте `WEB_APP_URL` в существующем `bot/.env`; после перезапуска бот установит новое default menu через `set_chat_menu_button`. Если URL Mini App отдельно задан в BotFather, обновите его на `https://lcpn3twork.com/app`. Старые сообщения на текущем домене поддерживаются редиректами выше. Ссылки на прежний GitHub Pages origin требуют отдельного перенаправления на том хостинге.
+Бот формирует кнопку входа с `/login`, кнопку поддержки с `/support` и кнопку меню «Кабинет» с `/app`. При последующем обновлении production проверьте `WEB_APP_URL` в существующем `bot/.env`; после перезапуска бот установит новое default menu через `set_chat_menu_button`. Если URL Mini App отдельно задан в BotFather, обновите его на `https://lcpn3twork.com/app`. Старые сообщения на текущем домене поддерживаются редиректами выше. Ссылки на прежний GitHub Pages origin требуют отдельного перенаправления на том хостинге.
 
 Старый `.github/workflows/deploy.yml` для GitHub Pages сохранён без изменений и по-прежнему настроен на push в `main`; это не способ публикации текущего production-домена. Его отключение или замена — отдельная задача.
 
@@ -80,7 +81,7 @@ npm ci
 npm run dev -- --host localhost
 ```
 
-Откройте `http://localhost:5173/login`. В локальном сценарии сайт открывайте непосредственно в браузере: HTTPS-кнопки Telegram ведут на домен из `WEB_APP_URL` (production — `https://lcpn3twork.com`). Для локального browser challenge login публикация frontend и HTTPS-туннель не требуются: локальный бот получает updates через исходящее соединение с Telegram, а backend доступен ему по loopback.
+Откройте `http://localhost:5173/login`. Для проверки `/support` нужен авторизованный пользователь и запущенный backend. Если support-бот уже работает на VPS, не запускайте второй polling с тем же токеном; локально можно проверять UI/backend, а Telegram-уведомления — после выкладки backend и bot на сервер.
 
 ## API
 
@@ -88,6 +89,12 @@ npm run dev -- --host localhost
 | --- | --- |
 | `POST /auth/bot/start` | Публичный; `login_id`, `browser_token`, `telegram_url`, `expires_in: 300` |
 | `POST /auth/bot/confirm` | `X-Bot-Internal-Secret`; JSON `{login_id, id, first_name, username?, last_name?}`; только `{status: "approved"}`, без JWT |
+| `POST /support/tickets` | JWT пользователя; создать обращение `{category, message}` |
+| `GET /support/tickets` | JWT пользователя; список его обращений |
+| `GET /support/tickets/{id}` | JWT пользователя; переписка по своему обращению |
+| `POST /support/tickets/{id}/messages` | JWT пользователя; добавить сообщение |
+| `GET /support/internal/pending` | `X-Bot-Internal-Secret`; новые обращения для Telegram-бота |
+| `POST /support/internal/tickets/{id}/messages` | `X-Bot-Internal-Secret`; ответ администратора |
 | `POST /auth/bot/cancel` | Тот же header и JSON; `{status: "cancelled"}` |
 | `GET /auth/bot/status/{login_id}` | `X-Login-Token`; `pending`, `cancelled`, `expired` или однократно `approved` + `access_token`, `token_type`, `user` |
 | `GET /auth/me` | `Authorization: Bearer <JWT>`; `{id, first_name, username, last_name}` |

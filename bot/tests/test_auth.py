@@ -70,7 +70,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_support_and_about_still_work(self):
         keyboard = get_main_keyboard()
-        self.assertEqual(keyboard.inline_keyboard[1][0].url, self.settings.support_telegram_url)
+        self.assertEqual(keyboard.inline_keyboard[1][0].web_app.url, self.settings.web_url("support"))
         await self.feed_callback(ABOUT_CALLBACK)
         self.assertTrue(any(isinstance(call, SendMessage) for call in self.session.calls))
 

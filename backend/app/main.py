@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from .auth import router as auth_router
 from .challenges import InMemoryChallengeStore
 from .settings import get_settings
+from .support import SupportStore, router as support_router
 
 
 @asynccontextmanager
@@ -14,6 +15,7 @@ async def lifespan(app: FastAPI):
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
     app.state.settings = get_settings()
     app.state.challenge_store = InMemoryChallengeStore()
+    app.state.support_store = SupportStore()
     yield
 
 
@@ -33,6 +35,7 @@ app.add_middleware(
 
 # Сохраняем Widget endpoint и подключаем авторизацию через бота.
 app.include_router(auth_router)
+app.include_router(support_router)
 
 @app.get("/health")
 async def health():

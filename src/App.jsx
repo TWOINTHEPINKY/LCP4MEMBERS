@@ -19,6 +19,8 @@ import AccountLogoutButton from './components/AccountLogoutButton'
 import ProfileSettings from './components/ProfileSettings'
 import DashboardPlaceholder from './pages/DashboardPlaceholder'
 import Plans from './pages/Plans'
+import Support from './pages/Support'
+import Devices from './pages/Devices'
 import { getTelegramInitData } from './lib/auth'
 import { getSavedLanguage, saveLanguage } from './lib/language'
 import { dashboardPlaceholderRoutes, dashboardText } from './lib/dashboardText'
@@ -410,7 +412,9 @@ function App() {
           </ProfileSettings>} />} />
           <Route path="/account" element={<Navigate to="/app" replace />} />
           <Route path="/plans" element={<Plans lang={lang} />} />
-          {dashboardPlaceholderRoutes.map(section => (
+          <Route path="/support" element={<Support lang={lang} />} />
+          <Route path="/devices" element={<Devices lang={lang} />} />
+          {dashboardPlaceholderRoutes.filter(section => section !== 'devices').map(section => (
             <Route key={section} path={`/${section}`} element={<DashboardPlaceholder section={section} lang={lang} />} />
           ))}
         </Routes>

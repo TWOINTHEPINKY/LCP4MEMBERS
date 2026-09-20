@@ -7,6 +7,7 @@ from typing import Annotated
 from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field, ValidationError
@@ -24,6 +25,7 @@ class TelegramUser(BaseModel):
     first_name: str = Field(min_length=1, max_length=256)
     username: str | None = Field(default=None, max_length=256)
     last_name: str | None = Field(default=None, max_length=256)
+    photo_url: str | None = Field(default=None, max_length=2048)
 
 
 class TelegramAuthRequest(TelegramUser):
@@ -103,10 +105,14 @@ def token_response(user: TelegramUser, settings: Settings) -> dict:
     now = datetime.now(timezone.utc)
     token = jwt.encode(
         {"sub": str(user.id), "username": user.username, "first_name": user.first_name,
-         "last_name": user.last_name, "iat": now, "exp": now + timedelta(days=30)},
+         "last_name": user.last_name, "photo_url": user.photo_url,
+         "iat": now, "exp": now + timedelta(days=30)},
         settings.jwt_secret, algorithm="HS256",
     )
-    return {"access_token": token, "token_type": "bearer", "user": user.model_dump()}
+    user_data = user.model_dump()
+    if user_data.get("photo_url") is None:
+        user_data.pop("photo_url", None)
+    return {"access_token": token, "token_type": "bearer", "user": user_data}
 
 
 def require_bot_secret(
@@ -205,7 +211,14 @@ async def me(response: Response, settings: Annotated[Settings, Depends(settings_
     try:
         claims = jwt.decode(credentials.credentials, settings.jwt_secret, algorithms=["HS256"],
                             options={"require_exp": True, "require_sub": True})
-        return TelegramUser(id=int(claims["sub"]), username=claims.get("username"),
-                            first_name=claims["first_name"], last_name=claims.get("last_name"))
+        user = TelegramUser(id=int(claims["sub"]), username=claims.get("username"),
+                            first_name=claims["first_name"], last_name=claims.get("last_name"),
+                            photo_url=claims.get("photo_url"))
+        if user.photo_url is None:
+            return JSONResponse(
+                content=user.model_dump(exclude={"photo_url"}),
+                headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+            )
+        return user
     except (JWTError, ValidationError, ValueError, TypeError, KeyError, OverflowError):
         raise unauthorized from None

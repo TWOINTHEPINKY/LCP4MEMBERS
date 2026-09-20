@@ -19,7 +19,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text=SUPPORT_BUTTON,
-                    url=settings.support_telegram_url,
+                    web_app=WebAppInfo(url=settings.web_url("support")),
                     style="success",
                 ),
                 InlineKeyboardButton(

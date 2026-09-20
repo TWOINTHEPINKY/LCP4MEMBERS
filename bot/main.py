@@ -11,10 +11,22 @@ from aiogram.utils.token import TokenValidationError
 
 from config.settings import ConfigurationError, get_settings
 from handlers import router
+from handlers.support import notify_ticket
+from support_client import SupportBackendError, get_pending_tickets
 from keyboards.main_keyboard import get_menu_button
 from texts.messages import START_COMMAND_DESCRIPTION
 
 logger = logging.getLogger(__name__)
+
+
+async def support_notifier(bot: Bot, auth_http: ClientSession) -> None:
+    while True:
+        try:
+            for ticket in await get_pending_tickets(auth_http):
+                await notify_ticket(bot, ticket)
+        except SupportBackendError:
+            logger.warning("Не удалось проверить новые обращения поддержки.")
+        await asyncio.sleep(5)
 
 
 async def main() -> None:
@@ -24,6 +36,7 @@ async def main() -> None:
 
     logger.info("Запуск LIZARD Bot")
     async with Bot(token=settings.bot_token) as bot, ClientSession(timeout=ClientTimeout(total=10)) as auth_http:
+        notifier = asyncio.create_task(support_notifier(bot, auth_http))
         # Заменяем default-список команд; /admin остаётся доступен через его handler.
         await bot.set_my_commands(
             commands=[BotCommand(command="start", description=START_COMMAND_DESCRIPTION)],
@@ -33,12 +46,17 @@ async def main() -> None:
         # Без chat_id устанавливается меню по умолчанию для личных чатов.
         await bot.set_chat_menu_button(menu_button=get_menu_button())
         logger.info("Кнопка «Кабинет» настроена; запуск polling")
-        await dispatcher.start_polling(
-            bot,
-            allowed_updates=dispatcher.resolve_used_update_types(),
-            close_bot_session=False,  # Сессию закрывает async with, в том числе при ошибке.
-            auth_http=auth_http,
-        )
+        try:
+            await dispatcher.start_polling(
+                bot,
+                allowed_updates=dispatcher.resolve_used_update_types(),
+                close_bot_session=False,  # Сессию закрывает async with, в том числе при ошибке.
+                auth_http=auth_http,
+                support_http=auth_http,
+            )
+        finally:
+            notifier.cancel()
+            await asyncio.gather(notifier, return_exceptions=True)
 
 
 if __name__ == "__main__":
