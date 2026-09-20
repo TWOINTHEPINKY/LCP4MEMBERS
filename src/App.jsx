@@ -20,7 +20,6 @@ import ProfileSettings from './components/ProfileSettings'
 import DashboardPlaceholder from './pages/DashboardPlaceholder'
 import Plans from './pages/Plans'
 import { getTelegramInitData } from './lib/auth'
-import { useDashboardHeader } from './lib/dashboardHeader'
 import { getSavedLanguage, saveLanguage } from './lib/language'
 import { dashboardPlaceholderRoutes, dashboardText } from './lib/dashboardText'
 
@@ -81,7 +80,7 @@ const translations = {
   }
 }
 
-// Header visibility changes must not reconcile every unchanged Matrix column.
+// Unrelated App state updates must not reconcile every unchanged Matrix column.
 const MatrixRain = memo(function MatrixRain() {
   const [columns, setColumns] = useState([])
   useEffect(() => {
@@ -212,12 +211,9 @@ function App() {
   const connectBtnRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const isDashboard = pathname.replace(/\/+$/, '') === '/app'
-  const isTelegramDashboard = isDashboard && Boolean(telegramInitData)
-  const showGlobalHeader = !telegramInitData || !['/', '/login', '/app'].includes(pathname.replace(/\/+$/, '') || '/')
-  const headerContentRef = useRef(null)
-  const { hidden: headerHidden, reveal: revealHeader } = useDashboardHeader(isDashboard && !telegramInitData, headerContentRef)
-  const showDashboardFooter = isDashboard || pathname.replace(/\/+$/, '') === '/plans' || dashboardPlaceholderRoutes.some(section => pathname.replace(/\/+$/, '') === `/${section}`)
+  const currentPath = pathname.replace(/\/+$/, '') || '/'
+  const showGlobalHeader = !telegramInitData && (currentPath === '/' || currentPath === '/login')
+  const isInternalPage = currentPath === '/app' || currentPath === '/plans' || dashboardPlaceholderRoutes.some(section => currentPath === `/${section}`)
 
   const t = translations[lang]
   const fullText = t.slogan
@@ -367,19 +363,19 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className={`app${isTelegramDashboard ? ' telegram-dashboard' : ''}`}>
+      <div className={`app${isInternalPage ? ' internal-shell' : ''}${isInternalPage && telegramInitData ? ' internal-shell--telegram' : ''}`}>
         <MatrixRain />
         <GreenParticles particles={particles} />
 
-        {showGlobalHeader && <header className={isDashboard ? 'dashboard-browser-header' : undefined} data-hidden={isDashboard ? headerHidden : undefined}>
-          <div className="header-inner" ref={headerContentRef} inert={headerHidden} aria-hidden={headerHidden || undefined} onFocusCapture={revealHeader}>
+        {showGlobalHeader && <header>
+          <div className="header-inner">
             <button type="button" className="logo" onClick={handleLogoClick} aria-label="LCP VPN logo">
               <span className="logo-icon"><LogoIcon className="logo-svg" aria-hidden="true" /></span>
               <span className="logo-text">LCP VPN</span>
             </button>
             <div className="header-right">
               {languageAndThemeControls}
-              {isDashboard ? <AccountLogoutButton lang={lang} onError={setToast} /> : <button
+              <button
                 type="button"
                 className="header-control account-btn"
                 onClick={() => navigate('/app')}
@@ -390,7 +386,7 @@ function App() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-              </button>}
+              </button>
             </div>
           </div>
         </header>}
@@ -408,10 +404,10 @@ function App() {
           <Route path="/login" element={
             <Login lang={lang} />
           } />
-          <Route path="/app" element={<Account lang={lang} profileControls={telegramInitData ? <ProfileSettings lang={lang}>
+          <Route path="/app" element={<Account lang={lang} profileControls={<ProfileSettings lang={lang}>
             {languageAndThemeControls}
             <AccountLogoutButton lang={lang} onError={setToast} />
-          </ProfileSettings> : null} />} />
+          </ProfileSettings>} />} />
           <Route path="/account" element={<Navigate to="/app" replace />} />
           <Route path="/plans" element={<Plans lang={lang} />} />
           {dashboardPlaceholderRoutes.map(section => (
@@ -425,7 +421,7 @@ function App() {
 
         <footer>
           <p>{t.footer}</p>
-          {showDashboardFooter && <nav className="dashboard-legal" aria-label={dashboardText[lang].legalLinks}>
+          {isInternalPage && <nav className="dashboard-legal" aria-label={dashboardText[lang].legalLinks}>
             <Link to="/terms">{dashboardText[lang].terms}</Link>
             <Link to="/privacy">{dashboardText[lang].privacy}</Link>
           </nav>}

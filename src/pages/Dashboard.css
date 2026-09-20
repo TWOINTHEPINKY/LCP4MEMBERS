@@ -1,8 +1,14 @@
-/* Dashboard-only layout; share the existing theme and Telegram inset tokens. */
+/* Shared internal layout; public pages retain their existing header spacing. */
+.internal-shell {
+  --internal-top-gap: 2.5rem;
+  --internal-page-top: calc(var(--safe-area-inset-top) + var(--internal-top-gap));
+}
+.internal-shell.internal-shell--telegram { --internal-top-gap: calc(1.5rem + 20px); }
+.internal-shell .login-container { padding-top: var(--internal-page-top); }
 .dashboard-page {
   position: relative;
   z-index: 1;
-  padding: calc(var(--header-height) + 2.5rem) var(--page-inset-right) 1rem var(--page-inset-left);
+  padding: var(--internal-page-top, calc(var(--safe-area-inset-top) + 2.5rem)) var(--page-inset-right) 1rem var(--page-inset-left);
 }
 .dashboard-inner { max-width: 1200px; margin-inline: auto; }
 .dashboard-title {
@@ -10,6 +16,24 @@
   font-size: clamp(1.5rem, 2.6vw, 2rem);
   font-weight: 400;
   color: var(--moss-text-bright);
+}
+.internal-page-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; }
+.internal-page-title .dashboard-title { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; }
+.internal-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  height: 44px;
+  border-radius: 10px;
+  color: var(--moss-text-bright);
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.internal-back svg { width: 22px; height: 22px; }
+.internal-back:focus-visible { outline: 2px solid var(--moss-text-bright); outline-offset: 3px; }
+@media (hover: hover) {
+  .internal-back:hover { background: var(--moss-dark); }
 }
 .dashboard-glass {
   min-width: 0;
@@ -117,22 +141,23 @@
 .dashboard-placeholder { min-height: 65vh; display: grid; place-items: center; }
 .dashboard-placeholder > section { width: min(100%, 560px); padding: clamp(1.5rem, 4vw, 3rem); }
 .dashboard-placeholder h1 { font-size: clamp(1.4rem, 3vw, 2rem); margin-bottom: 1rem; color: var(--moss-text-bright); overflow-wrap: anywhere; }
+.dashboard-placeholder .internal-page-title { margin-bottom: 1rem; }
 
 @media (max-width: 900px) {
   .dashboard-secondary-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
-  .dashboard-page { padding-top: calc(var(--header-height) + 1.75rem); }
+  .internal-shell { --internal-top-gap: 1.75rem; }
   .dashboard-title { margin-bottom: 1rem; }
+  .internal-page-title { margin-bottom: 1rem; }
   .dashboard-profile { flex-wrap: wrap; padding: 1rem; gap: 0.75rem; border-radius: 18px; }
   .dashboard-primary-grid { grid-template-columns: minmax(0, 1fr); }
   .dashboard-overview { border-radius: 20px; }
   .dashboard-legal { gap: 0.25rem 1rem; }
 }
 
-/* Telegram owns the top chrome; retain its existing safe-area tokens. */
-.telegram-dashboard .dashboard-page { padding-top: calc(var(--safe-area-inset-top) + 1.5rem + 20px); }
-.dashboard-profile--telegram { position: relative; z-index: 2; flex-wrap: nowrap; }
+/* The same profile controls are available in browsers and Telegram. */
+.dashboard-profile--settings { position: relative; z-index: 2; flex-wrap: nowrap; }
 .profile-settings { position: relative; flex: 0 0 36px; height: 36px; }
 .profile-settings-toggle {
   display: grid;

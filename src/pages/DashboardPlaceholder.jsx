@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import InternalPageTitle from '../components/InternalPageTitle'
 import { dashboardText } from '../lib/dashboardText'
 import './Dashboard.css'
 
@@ -8,9 +8,8 @@ export default function DashboardPlaceholder({ section, lang }) {
     <main className="dashboard-page dashboard-placeholder">
       <section className="dashboard-glass" aria-labelledby="placeholder-title">
         <p className="dashboard-note">{text.preparing}</p>
-        <h1 id="placeholder-title">{text[section]}</h1>
+        <InternalPageTitle id="placeholder-title" lang={lang}>{text[section]}</InternalPageTitle>
         <p className="dashboard-copy">{text.preparingNote}</p>
-        <Link className="dashboard-action" to="/app">← {text.back}</Link>
       </section>
     </main>
   )

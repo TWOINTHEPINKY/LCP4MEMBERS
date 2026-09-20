@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import InternalPageTitle from '../components/InternalPageTitle'
 import { dashboardMock } from '../data/dashboardMock'
 import { billingPeriods, plansMock } from '../data/plansMock'
 import { calculatePlanPrice } from '../lib/plansPricing'
@@ -18,7 +19,7 @@ export default function Plans({ lang }) {
   return (
     <main className="dashboard-page plans-page" aria-labelledby="plans-title">
       <div className="dashboard-inner">
-        <h1 id="plans-title" className="dashboard-title">{text.title}</h1>
+        <InternalPageTitle id="plans-title" lang={lang}>{text.title}</InternalPageTitle>
 
         <section className="dashboard-glass plans-info" aria-labelledby="plans-choose-title">
           <div className="plans-info-copy">
