@@ -1,6 +1,7 @@
 import os
 import gc
 import secrets
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -10,6 +11,7 @@ from jose import jwt
 
 from backend.app.main import app
 from backend.app.support import SupportStore
+from backend.app.auth import TelegramUser
 
 
 class SupportApiTests(unittest.TestCase):
@@ -45,10 +47,16 @@ class SupportApiTests(unittest.TestCase):
 
         self.assertEqual(self.client.get("/support/tickets", headers=self.auth(self.other_user)).json(), {"tickets": []})
         self.assertEqual(self.client.get(f"/support/tickets/{ticket_id}", headers=self.auth(self.other_user)).status_code, 404)
+        self.assertEqual(self.client.post(f"/support/tickets/{ticket_id}/messages", headers=self.auth(self.other_user), json={"message": "Not mine"}).status_code, 404)
 
         pending = self.client.get("/support/internal/pending", headers=self.internal)
         self.assertEqual(pending.status_code, 200)
         self.assertEqual(pending.json()["tickets"][0]["id"], ticket_id)
+        self.assertEqual(self.client.get("/support/internal/pending", headers=self.internal).json(), pending.json())
+        for _ in range(2):
+            acknowledged = self.client.post(f"/support/internal/tickets/{ticket_id}/notified", headers=self.internal, json={"updated_at": ticket["updated_at"]})
+            self.assertEqual(acknowledged.status_code, 200)
+            self.assertEqual(acknowledged.headers["cache-control"], "no-store")
         self.assertEqual(self.client.get("/support/internal/pending", headers=self.internal).json(), {"tickets": []})
 
         reply = self.client.post(f"/support/internal/tickets/{ticket_id}/messages", headers=self.internal, json={"admin_id": 999, "message": "Try another server"})
@@ -60,7 +68,9 @@ class SupportApiTests(unittest.TestCase):
         self.assertEqual(user_reply.status_code, 200)
         self.assertEqual(user_reply.json()["status"], "open")
         self.assertEqual(len(user_reply.json()["messages"]), 3)
+        self.assertEqual(self.client.get("/support/internal/pending", headers=self.internal).json()["tickets"][0]["id"], ticket_id)
         self.assertEqual(self.client.post(f"/support/internal/tickets/{ticket_id}/close", headers=self.internal).json()["status"], "closed")
+        self.assertEqual(self.client.get("/support/internal/pending", headers=self.internal).json(), {"tickets": []})
 
     def test_internal_endpoints_require_secret(self):
         response = self.client.get("/support/internal/pending")
@@ -69,6 +79,52 @@ class SupportApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         ticket_id = response.json()["id"]
         self.assertEqual(self.client.post(f"/support/internal/tickets/{ticket_id}/close", headers={}).status_code, 401)
+        for headers in ({}, self.auth(), {"X-Bot-Internal-Secret": "wrong"}):
+            self.assertEqual(self.client.post(f"/support/internal/tickets/{ticket_id}/notified", headers=headers, json={"updated_at": response.json()["updated_at"]}).status_code, 401)
+        self.assertEqual(len(self.client.get("/support/internal/pending", headers=self.internal).json()["tickets"]), 1)
+
+    def test_old_acknowledgement_does_not_hide_a_new_message(self):
+        ticket = self.client.post("/support/tickets", headers=self.auth(), json={"category": "other", "message": "First"}).json()
+        path = f'/support/internal/tickets/{ticket["id"]}/notified'
+        updated = self.client.post(f'/support/tickets/{ticket["id"]}/messages', headers=self.auth(), json={"message": "Second"}).json()
+        self.assertEqual(self.client.post(path, headers=self.internal, json={"updated_at": ticket["updated_at"]}).status_code, 200)
+        pending = self.client.get("/support/internal/pending", headers=self.internal).json()["tickets"]
+        self.assertEqual(pending, [updated])
+        self.assertEqual(self.client.post(path, headers=self.internal, json={"updated_at": updated["updated_at"]}).status_code, 200)
+        self.assertEqual(self.client.get("/support/internal/pending", headers=self.internal).json(), {"tickets": []})
+        self.assertEqual(self.client.post("/support/internal/tickets/999/notified", headers=self.internal, json={"updated_at": updated["updated_at"]}).status_code, 404)
+
+    def test_user_endpoints_require_authentication(self):
+        for method, path, data in (
+            ("GET", "/support/tickets", None), ("GET", "/support/tickets/1", None),
+            ("POST", "/support/tickets", {"category": "other", "message": "Hello"}),
+            ("POST", "/support/tickets/1/messages", {"message": "Hello"}),
+        ):
+            self.assertEqual(self.client.request(method, path, json=data).status_code, 401)
+
+    def test_connections_close_on_success_early_return_and_rollback(self):
+        connections = []
+        connect = sqlite3.connect
+
+        def tracking_connect(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            connections.append(connection)
+            return connection
+
+        with patch("backend.app.support.sqlite3.connect", side_effect=tracking_connect):
+            store = SupportStore(os.path.join(self.temp_dir, "closure.sqlite3"))
+            ticket = store.create_ticket(TelegramUser(**self.user), "other", "Committed")
+            self.assertEqual(len(store.list_tickets(self.user["id"])), 1)
+            self.assertIsNone(store.get_ticket(999))
+            self.assertIsNone(store.add_user_message(999, TelegramUser(**self.user), "Missing"))
+            with self.assertRaisesRegex(RuntimeError, "rollback"):
+                with store._connect() as connection:
+                    connection.execute("DELETE FROM support_messages")
+                    raise RuntimeError("rollback")
+            self.assertEqual(store.get_ticket(ticket["id"])["messages"][0]["message"], "Committed")
+        for connection in connections:
+            with self.assertRaises(sqlite3.ProgrammingError):
+                connection.execute("SELECT 1")
 
 
 if __name__ == "__main__":

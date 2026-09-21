@@ -14,6 +14,7 @@ from aiogram.types import CallbackQuery, Chat, Message, MessageEntity, Update, U
 from auth_client import AuthBackendError, submit_decision
 from config.settings import ConfigurationError, Settings, get_settings
 from handlers import router
+from handlers.support import reply_context
 from keyboards.about_keyboard import ABOUT_CALLBACK
 from keyboards.main_keyboard import get_main_keyboard, get_menu_button
 
@@ -57,12 +58,57 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             entities=[MessageEntity(type="bot_command", offset=0, length=6)])
 
     async def feed_message(self, text):
-        await self.dispatcher.feed_update(self.bot, Update(update_id=1, message=self.message(text)))
+        await self.dispatcher.feed_update(self.bot, Update(update_id=1, message=self.message(text)), support_http=MagicMock())
 
     async def feed_callback(self, data, message=None):
         callback = CallbackQuery(id="test_callback", from_user=self.user, chat_instance="test",
             data=data, message=message or self.message())
-        await self.dispatcher.feed_update(self.bot, Update(update_id=2, callback_query=callback), auth_http=MagicMock())
+        await self.dispatcher.feed_update(self.bot, Update(update_id=2, callback_query=callback), auth_http=MagicMock(), support_http=MagicMock())
+
+    async def test_support_cancel_only_clears_current_admin_in_private_chat(self):
+        self.addCleanup(reply_context.clear)
+        reply_context.update({self.user.id: 10, 456: 20})
+        with patch("handlers.support.get_settings", return_value=self.settings):
+            group_message = self.message("/cancel").model_copy(update={"chat": Chat(id=-123, type="group")})
+            await self.dispatcher.feed_update(self.bot, Update(update_id=3, message=group_message))
+            self.assertEqual(reply_context, {self.user.id: 10, 456: 20})
+            await self.feed_message("/cancel")
+            self.assertEqual(reply_context, {456: 20})
+            self.assertTrue(any(isinstance(call, SendMessage) and "отменён" in call.text for call in self.session.calls))
+            self.session.calls.clear()
+            await self.feed_message("/cancel")
+            self.assertEqual(self.session.calls, [])
+
+    async def test_non_admin_cannot_cancel_reply_or_close_support(self):
+        self.addCleanup(reply_context.clear)
+        self.user = self.user.model_copy(update={"id": 999})
+        reply_context.update({999: 10, 123456: 20})
+        with patch("handlers.support.get_settings", return_value=self.settings), \
+                patch("handlers.support.close_ticket", new_callable=AsyncMock) as close, \
+                patch("handlers.support.reply_to_ticket", new_callable=AsyncMock) as reply:
+            await self.feed_message("/cancel")
+            await self.feed_message("Unauthorised reply")
+            await self.feed_callback("support:reply:10")
+            await self.feed_callback("support:close:10")
+            self.assertEqual(reply_context, {999: 10, 123456: 20})
+            close.assert_not_awaited()
+            reply.assert_not_awaited()
+            self.assertEqual(self.session.calls, [])
+
+    async def test_support_reply_failure_preserves_context_for_retry(self):
+        from support_client import SupportBackendError
+        self.addCleanup(reply_context.clear)
+        with patch("handlers.support.get_settings", return_value=self.settings), \
+                patch("handlers.support.reply_to_ticket", new_callable=AsyncMock) as reply:
+            await self.feed_callback("support:reply:10")
+            self.assertEqual(reply_context[self.user.id], 10)
+            reply.side_effect = SupportBackendError()
+            await self.feed_message("First attempt")
+            self.assertEqual(reply_context[self.user.id], 10)
+            reply.side_effect = None
+            await self.feed_message("Second attempt")
+            self.assertNotIn(self.user.id, reply_context)
+            self.assertEqual(reply.await_args.args[1:], (10, self.user.id, "Second attempt"))
 
     async def test_plain_start_keeps_welcome_photo(self):
         await self.feed_message("/start")

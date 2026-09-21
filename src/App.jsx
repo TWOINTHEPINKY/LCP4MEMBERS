@@ -215,7 +215,7 @@ function App() {
   const { pathname } = useLocation()
   const currentPath = pathname.replace(/\/+$/, '') || '/'
   const showGlobalHeader = !telegramInitData && (currentPath === '/' || currentPath === '/login')
-  const isInternalPage = currentPath === '/app' || currentPath === '/plans' || dashboardPlaceholderRoutes.some(section => currentPath === `/${section}`)
+  const isInternalPage = currentPath === '/app' || currentPath === '/plans' || currentPath === '/support' || dashboardPlaceholderRoutes.some(section => currentPath === `/${section}`)
 
   const t = translations[lang]
   const fullText = t.slogan
@@ -369,7 +369,7 @@ function App() {
         <MatrixRain />
         <GreenParticles particles={particles} />
 
-        {showGlobalHeader && <header>
+        {showGlobalHeader && <header className="site-header">
           <div className="header-inner">
             <button type="button" className="logo" onClick={handleLogoClick} aria-label="LCP VPN logo">
               <span className="logo-icon"><LogoIcon className="logo-svg" aria-hidden="true" /></span>

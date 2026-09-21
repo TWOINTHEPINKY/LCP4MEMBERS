@@ -2,9 +2,10 @@ import logging
 
 from aiogram import F, Router
 from aiogram.enums import ChatType
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
-from aiohttp import ClientSession
+from aiohttp import ClientError, ClientSession
 
 from config.settings import get_settings
 from keyboards.support_keyboard import get_support_keyboard
@@ -54,6 +55,14 @@ async def support_action(callback: CallbackQuery, support_http: ClientSession) -
         await callback.message.answer("Не удалось закрыть обращение. Попробуйте ещё раз.", parse_mode=None)
 
 
+@router.message(F.chat.type == ChatType.PRIVATE, Command("cancel"))
+async def cancel_support_reply(message: Message) -> None:
+    if not message.from_user or not is_admin(message.from_user.id):
+        return
+    if reply_context.pop(message.from_user.id, None) is not None:
+        await message.answer("Ответ отменён.", parse_mode=None)
+
+
 @router.message(F.chat.type == ChatType.PRIVATE, F.text, is_reply_message)
 async def send_support_reply(message: Message, support_http: ClientSession) -> None:
     if not message.from_user or message.text.startswith("/"):
@@ -70,7 +79,7 @@ async def send_support_reply(message: Message, support_http: ClientSession) -> N
     await message.answer(f"Ответ по обращению #{ticket_id} отправлен пользователю.", parse_mode=None)
 
 
-async def notify_ticket(bot, ticket: dict) -> None:
+async def notify_ticket(bot, ticket: dict) -> bool:
     ticket_id = ticket.get("id")
     user_name = " ".join(filter(None, [ticket.get("first_name"), ticket.get("last_name")])) or "Без имени"
     username = f"@{ticket['username']}" if ticket.get("username") else "без username"
@@ -78,16 +87,21 @@ async def notify_ticket(bot, ticket: dict) -> None:
         "connection": "Подключение", "payment": "Оплата", "account": "Аккаунт", "other": "Другое",
     }.get(ticket.get("category"), "Другое")
     messages = ticket.get("messages") or []
-    first_message = next((item.get("message") for item in messages if item.get("author_kind") == "user"), "")
+    user_messages = [item for item in messages if item.get("author_kind") == "user"]
+    latest_message = user_messages[-1].get("message") if user_messages else ""
+    title = "💬 Новое сообщение в обращении" if len(user_messages) > 1 else "🆕 Новое обращение"
     text = (
-        f"🆕 Новое обращение #{ticket_id}\n\n"
+        f"{title} #{ticket_id}\n\n"
         f"Пользователь: {user_name}\n"
         f"Telegram: {username}\n"
         f"ID: {ticket.get('user_id')}\n"
-        f"Категория: {category}\n\n{first_message}"
+        f"Категория: {category}\n\n{latest_message}"
     )
+    delivered = False
     for admin_id in get_settings().admin_ids:
         try:
             await bot.send_message(admin_id, text, reply_markup=get_support_keyboard(ticket_id), parse_mode=None)
-        except TelegramBadRequest:
-            logger.warning("Не удалось отправить обращение администратору.")
+            delivered = True
+        except (TelegramAPIError, ClientError, OSError) as error:
+            logger.warning("Не удалось отправить обращение администратору (%s).", type(error).__name__)
+    return delivered

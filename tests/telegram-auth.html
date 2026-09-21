@@ -16,8 +16,7 @@
     import Plans from '../src/pages/Plans.jsx'
     import AccountLogoutButton from '../src/components/AccountLogoutButton.jsx'
     import App from '../src/App.jsx'
-    import SupportAction from '../src/components/SupportAction.jsx'
-    import { validateSupportUrl } from '../src/lib/support.js'
+    import { dashboardMock } from '../src/data/dashboardMock.js'
 
     const host = document.querySelector('#fixture')
     const results = []
@@ -25,6 +24,10 @@
     const challengeKey = 'lcp_login_challenge'
     const profile = { id: 123456, first_name: 'Test User', username: 'test_user', last_name: null }
     const raw = 'query_id=fixture%2Bvalue&user=%7B%7D&hash=test-only'
+    const supportTicket = id => ({
+      id, category: 'connection', status: 'open', updated_at: '2026-09-21T00:00:00Z',
+      messages: [{ id, author_kind: 'user', message: `Request ${id}`, created_at: '2026-09-21T00:00:00Z' }],
+    })
     let root, config, requests, popups, locations, currentPath, navigationType, blockStorage, logoutErrors, navigate
     const storage = () => {
       const data = new Map()
@@ -83,9 +86,33 @@
       }
       window.fetch = async (url, request = {}) => {
         const path = new URL(url, location.href).pathname.replace(/^\/api/, '')
-        requests.push({ path, method: request.method || 'GET' })
+        requests.push({ path, method: request.method || 'GET', headers: request.headers, body: request.body })
         await pause(40)
         if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+        if (path.startsWith('/support/')) {
+          if (config.supportUnauthorized || !localStorage.getItem(tokenKey) || request.headers?.Authorization !== `Bearer ${localStorage.getItem(tokenKey)}`) {
+            return Response.json({ detail: 'invalid_token' }, { status: 401 })
+          }
+          const tickets = config.supportTickets || []
+          if (path === '/support/tickets' && request.method !== 'POST') {
+            if (config.supportListDelay) await pause(config.supportListDelay)
+            return Response.json({ tickets })
+          }
+          if (path === '/support/tickets') {
+            const data = JSON.parse(request.body)
+            const ticket = { ...supportTicket(3), category: data.category }
+            ticket.messages[0].message = data.message
+            tickets.unshift(ticket)
+            return Response.json(ticket)
+          }
+          const ticket = tickets.find(item => item.id === Number(path.split('/')[3]))
+          assert(ticket, 'Unknown support ticket')
+          if (request.method === 'POST') ticket.messages.push({
+            id: ticket.messages.length + 10, author_kind: 'user', message: JSON.parse(request.body).message,
+            created_at: '2026-09-21T00:00:00Z',
+          })
+          return Response.json(ticket)
+        }
         if (path === '/auth/telegram-webapp') {
           assert(JSON.parse(request.body).init_data === raw, 'Raw initData must be sent unchanged')
           return config.fail
@@ -319,18 +346,16 @@
         assert(identity.includes('Настоящее имя Фамилия') && identity.includes('@test_user') && identity.includes('123456'), 'Profile is not from /me')
         const metadata = host.querySelector('.dashboard-profile-meta').textContent
         assert(metadata.includes('@test_user') && metadata.includes('TG ID 123456'), 'Profile metadata is separated')
-        assert(host.querySelector('.dashboard-device-count').textContent.trim() === '0 / 5', 'Zero-device state changed')
-        assert(!host.querySelector('.dashboard-device-list'), 'Fake devices were shown')
+        assert(host.querySelector('.dashboard-device-count').textContent.trim() === `${dashboardMock.devices.items.length} / ${dashboardMock.devices.limit}`, 'Device count differs from existing data')
+        assert(host.querySelectorAll('.dashboard-device-list li').length === Math.min(3, dashboardMock.devices.items.length), 'Device summary differs from existing data')
         assert(!host.querySelector('.dashboard-demo, #overview-title'), 'Development labels remain')
         assert(!/Демо|Обзор|примера|Overview|Demo|example/.test(host.querySelector('.dashboard-page').textContent), 'Development copy remains')
         assert(host.querySelector('button[aria-describedby="top-up-note"]').disabled, 'Payments became active')
         const support = host.querySelector('[aria-labelledby="support-title"]')
-        const configuredSupportUrl = validateSupportUrl(import.meta.env.VITE_SUPPORT_TELEGRAM_URL)
-        if (configuredSupportUrl) assert(support.querySelector('a')?.href === configuredSupportUrl, 'Configured support URL missing')
-        else assert(support.querySelector('button')?.disabled && !support.querySelector('a'), 'Unconfigured support is not disabled')
+        assert(support.querySelector('a')?.getAttribute('href') === '/support', 'Internal support link missing')
         assert(requests.every(request => request.path === '/auth/me'), 'Business data triggered API calls')
       })
-      await check('Dashboard navigation opens Plans and all four remaining placeholders return to /app', async () => {
+      await check('Dashboard navigation opens Plans, Devices and remaining placeholders, with back links to /app', async () => {
         host.querySelector('a[href="/plans"]').click()
         await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'real Plans page')
         assert(!host.querySelector('#placeholder-title') && host.querySelector('.plans-options'), 'Plans is still a placeholder')
@@ -341,8 +366,8 @@
           const link = host.querySelector(`a[href="${path}"]`)
           assert(link, `Missing dashboard link ${path}`)
           link.click()
-          await waitFor(() => currentPath === path && host.querySelector('#placeholder-title'), path)
-          assert(host.textContent.includes('Раздел готовится'), 'Missing placeholder notice')
+          await waitFor(() => currentPath === path && host.querySelector(path === '/devices' ? '#devices-page-title' : '#placeholder-title'), path)
+          if (path !== '/devices') assert(host.textContent.includes('Раздел готовится'), 'Missing placeholder notice')
           assert(!host.querySelector('header') && host.querySelector('footer') && host.querySelector('.matrix-rain'), 'Placeholder internal shell changed')
           internalBack().click()
           await waitFor(loaded, 'placeholder return')
@@ -626,41 +651,93 @@
         const metadata = host.querySelector('.dashboard-profile-meta')
         assert(metadata.textContent === 'TG ID 123456', 'Missing ID or stray separator')
       })
-      await check('Support action stays disabled for missing or invalid configuration', async () => {
-        for (const url of [null, '', 'https://example.com/support', 'https://t.me/fixture_support?url=unsafe']) {
-          root.render(h(SupportAction, { lang: 'ru', url }))
-          await pause(50)
-          await waitFor(() => host.querySelector('button[aria-describedby="support-note"]'), 'disabled support')
-          assert(host.querySelector('button').disabled && !host.querySelector('a'), 'Unsafe support navigation')
-          host.querySelector('button').click()
-          assert(popups.length === 0, 'Disabled support opened a popup')
-        }
+      await check('Dashboard support action opens the internal page without external Telegram links', async () => {
+        await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt' })
+        await waitFor(loaded, 'support action setup')
+        host.querySelector('a[href="/support"]').click()
+        await waitFor(() => currentPath === '/support' && host.querySelector('.support-empty'), 'support navigation')
+        assert(popups.length === 0, 'Support opened an external window')
+        internalBack().click()
+        await waitFor(loaded, 'support returns to dashboard')
       })
-      await check('Support uses the native browser link, Telegram bridge or fallback as appropriate', async () => {
-        const url = 'https://t.me/fixture_support'
-        root.render(h(SupportAction, { lang: 'en', url }))
-        await waitFor(() => host.querySelector('a'), 'active support')
-        const link = host.querySelector('a')
-        assert(link.href === url && link.textContent.includes('Contact'), 'Wrong support link')
-        assert(link.target === '_blank' && link.rel.includes('noopener') && link.rel.includes('noreferrer'), 'Unsafe external link')
-        function clickSupport(options = {}) {
-          let prevented
-          host.addEventListener('click', event => {
-            prevented = event.defaultPrevented
-            event.preventDefault() // Never actually open Telegram from these tests.
-          }, { once: true })
-          link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...options }))
-          return prevented
+      await check('Support authenticates all four API operations and preserves new-request mode without list refetches', async () => {
+        await mount('/support', { fullApp: true, browser: true, token: 'fixture-jwt', supportTickets: [supportTicket(1), supportTicket(2)] })
+        await waitFor(() => host.querySelector('.support-messages'), 'initial support selection')
+        const listRequests = () => requests.filter(item => item.path === '/support/tickets' && item.method === 'GET').length
+        const initialListRequests = listRequests()
+        assert(host.querySelector('.support-ticket-item.is-active').textContent.includes('#1'), 'First ticket not selected initially')
+        host.querySelectorAll('.support-ticket-item')[1].click()
+        await waitFor(() => host.querySelector('.support-messages')?.textContent.includes('Request 2'), 'select another ticket')
+        localStorage.setItem(tokenKey, 'renewed-support-token')
+        async function sendMessage(value) {
+          const textarea = host.querySelector('textarea')
+          Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(textarea, value)
+          textarea.dispatchEvent(new Event('input', { bubbles: true }))
+          await waitFor(() => !host.querySelector('.support-compose button').disabled, 'message ready')
+          host.querySelector('.support-compose').requestSubmit()
+          await waitFor(() => host.querySelector('textarea').value === '', 'message sent')
         }
-        window.Telegram = undefined
-        assert(clickSupport() === false, 'Normal browser lost native navigation')
-        const opened = []
-        window.Telegram = { WebApp: { platform: 'ios', openTelegramLink: value => opened.push(value) } }
-        assert(clickSupport() === true && opened.length === 1 && opened[0] === url, 'Telegram bridge was not used')
-        assert(clickSupport({ ctrlKey: true }) === false && opened.length === 1, 'Modified click was intercepted')
-        window.Telegram.WebApp.openTelegramLink = () => { throw new Error('unsupported') }
-        assert(clickSupport() === false, 'Bridge failure disabled native fallback')
+        await sendMessage('Reply to existing ticket')
+        assert(host.querySelector('.support-messages').textContent.includes('Reply to existing ticket'), 'Reply missing')
+        host.querySelector('.support-new-button').click()
+        await waitFor(() => host.querySelector('.support-empty'), 'new request mode')
+        await pause(200)
+        assert(!host.querySelector('.support-ticket-item.is-active') && host.querySelector('select'), 'Old ticket was selected again')
+        await sendMessage('A new request')
+        await waitFor(() => host.querySelector('.support-ticket-item.is-active')?.textContent.includes('#3'), 'created ticket selected')
+        assert(host.querySelector('.support-messages').textContent.includes('A new request'), 'New ticket missing')
+        const detailRequests = () => count('/support/tickets/3')
+        await waitFor(() => detailRequests() >= 1, 'created ticket details')
+        const initialDetails = detailRequests()
+        await waitFor(() => detailRequests() > initialDetails, 'selected ticket polling')
+        assert(listRequests() === initialListRequests, 'Selection or polling reloaded the ticket list')
+        const supportRequests = requests.filter(item => item.path.startsWith('/support/'))
+        assert(supportRequests.every(item => ['Bearer fixture-jwt', 'Bearer renewed-support-token'].includes(item.headers?.Authorization)), 'Unauthenticated support request')
+        assert(supportRequests.filter(item => item.method === 'POST').length === 2, 'Create/reply requests missing')
+        assert(supportRequests.filter(item => item.method === 'POST').every(item => item.headers.Authorization === 'Bearer renewed-support-token'), 'Submission used a stale token')
+        assert(supportRequests.at(-1).headers.Authorization === 'Bearer renewed-support-token', 'Polling used a stale token')
       })
+      await check('New request clicked during initial loading cannot be overridden by the list response', async () => {
+        await mount('/support', { fullApp: true, browser: true, token: 'fixture-jwt', supportTickets: [supportTicket(1)], supportListDelay: 250 })
+        await waitFor(() => host.querySelector('.support-new-button'), 'support renders before list response')
+        host.querySelector('.support-new-button').click()
+        await waitFor(() => host.querySelector('.support-ticket-item'), 'delayed ticket list')
+        assert(host.querySelector('.support-empty') && !host.querySelector('.support-ticket-item.is-active'), 'Delayed list replaced compose mode')
+        assert(count('/support/tickets/1') === 0, 'Compose mode fetched an old conversation')
+      })
+      await check('Support without a token replaces the route with login without support requests', async () => {
+        await mount('/support', { fullApp: true, browser: true })
+        await waitFor(() => currentPath === '/login' && host.querySelector('.login-card'), 'support login redirect')
+        assert(navigationType === 'REPLACE', 'Missing-token redirect added history')
+        assert(!requests.some(item => item.path.startsWith('/support/')), 'Support called the API without a token')
+      })
+      await check('Support rejects an expired token and returns to login', async () => {
+        await mount('/support', { fullApp: true, browser: true, token: 'expired-token', supportUnauthorized: true })
+        await waitFor(() => currentPath === '/login' && host.querySelector('.login-card'), 'support rejected token')
+        assert(!localStorage.getItem(tokenKey) && navigationType === 'REPLACE', 'Expired token was retained')
+        assert(requests.filter(item => item.path.startsWith('/support/')).every(item => item.headers?.Authorization === 'Bearer expired-token'), 'Expired token was omitted')
+      })
+      for (const browser of [true, false]) {
+        await check(`${browser ? 'Browser' : 'Telegram'} support uses internal shell spacing and legal footer`, async () => {
+          await mount('/support', { fullApp: true, browser, token: 'fixture-jwt', supportTickets: [supportTicket(1)] })
+          await waitFor(() => host.querySelector('.support-messages'), 'support shell')
+          assert(host.querySelector('.internal-shell') && host.querySelector('.dashboard-legal'), 'Support missing internal shell/footer')
+          assert(!host.querySelector('.header-inner'), 'Support exposed global public header')
+          assert(Boolean(host.querySelector('.internal-shell--telegram')) === !browser, 'Incorrect Telegram shell')
+          const style = document.documentElement.style
+          const name = '--tg-content-safe-area-inset-top'
+          const previous = style.getPropertyValue(name)
+          try {
+            if (!browser) style.setProperty(name, '72px')
+            const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+            const expected = browser ? rem * (matchMedia('(max-width: 640px)').matches ? 1.75 : 2.5) : 72 + rem * 1.5 + 20
+            assert(Math.abs(parseFloat(getComputedStyle(host.querySelector('.support-page')).paddingTop) - expected) < 0.1, 'Incorrect support safe-area spacing')
+          } finally {
+            if (previous) style.setProperty(name, previous)
+            else style.removeProperty(name)
+          }
+        })
+      }
       window.authTestResult = { passed: results.length, checks: results }
     } catch (error) {
       window.authTestResult = { passed: results.length, checks: results, error: error.message }

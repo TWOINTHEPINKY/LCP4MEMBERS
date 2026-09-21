@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import InternalPageTitle from '../components/InternalPageTitle'
-import { apiRequest } from '../lib/auth'
+import { ApiError, apiRequest, getToken, removeToken } from '../lib/auth'
 import { dashboardText } from '../lib/dashboardText'
 import './Dashboard.css'
 
@@ -13,23 +14,45 @@ function formatDate(value, lang) {
 }
 
 export default function Support({ lang }) {
+  const navigate = useNavigate()
   const text = dashboardText[lang]
   const [tickets, setTickets] = useState([])
-  const [selected, setSelected] = useState(null)
+  // undefined: initial selection; null: explicitly composing a new request.
+  const [selected, setSelected] = useState(undefined)
   const [category, setCategory] = useState('connection')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
 
+  const supportRequest = useCallback(async (path, options = {}) => {
+    const token = getToken()
+    if (!token) {
+      navigate('/login', { replace: true })
+      throw new ApiError('invalid_token', 401)
+    }
+    try {
+      return await apiRequest(path, {
+        ...options, headers: { ...options.headers, Authorization: `Bearer ${token}` },
+      })
+    } catch (failure) {
+      if (!options.signal?.aborted && (failure.status === 401 || failure.status === 403) && getToken() === token) {
+        removeToken()
+        navigate('/login', { replace: true })
+      }
+      throw failure
+    }
+  }, [navigate])
+
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
     async function loadTickets() {
       try {
-        const result = await apiRequest('/support/tickets')
+        const result = await supportRequest('/support/tickets', { signal: controller.signal })
         if (!active) return
         setTickets(result.tickets || [])
-        if (!selected && result.tickets?.[0]) setSelected(result.tickets[0].id)
+        setSelected(current => current === undefined ? result.tickets?.[0]?.id ?? null : current)
       } catch {
         if (active) setError(text.supportLoadError)
       } finally {
@@ -37,15 +60,16 @@ export default function Support({ lang }) {
       }
     }
     loadTickets()
-    return () => { active = false }
-  }, [text.supportLoadError, selected])
+    return () => { active = false; controller.abort() }
+  }, [text.supportLoadError, supportRequest])
 
   useEffect(() => {
     if (!selected) return undefined
     let active = true
+    const controller = new AbortController()
     async function loadTicket() {
       try {
-        const result = await apiRequest(`/support/tickets/${selected}`)
+        const result = await supportRequest(`/support/tickets/${selected}`, { signal: controller.signal })
         if (active) setTickets(current => current.map(ticket => ticket.id === result.id ? result : ticket))
       } catch {
         if (active) setError(text.supportLoadError)
@@ -53,8 +77,8 @@ export default function Support({ lang }) {
     }
     loadTicket()
     const interval = window.setInterval(loadTicket, 5000)
-    return () => { active = false; window.clearInterval(interval) }
-  }, [selected, text.supportLoadError])
+    return () => { active = false; controller.abort(); window.clearInterval(interval) }
+  }, [selected, text.supportLoadError, supportRequest])
 
   const activeTicket = tickets.find(ticket => ticket.id === selected)
 
@@ -66,12 +90,12 @@ export default function Support({ lang }) {
     setError('')
     try {
       if (activeTicket) {
-        const result = await apiRequest(`/support/tickets/${activeTicket.id}/messages`, {
+        const result = await supportRequest(`/support/tickets/${activeTicket.id}/messages`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: value }),
         })
         setTickets(current => current.map(ticket => ticket.id === result.id ? result : ticket))
       } else {
-        const result = await apiRequest('/support/tickets', {
+        const result = await supportRequest('/support/tickets', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category, message: value }),
         })
         setTickets(current => [result, ...current])

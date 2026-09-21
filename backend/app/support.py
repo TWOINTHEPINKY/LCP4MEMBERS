@@ -1,8 +1,9 @@
 import os
 import sqlite3
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Iterator, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
@@ -26,6 +27,10 @@ class SupportMessageCreate(BaseModel):
 class InternalSupportMessage(BaseModel):
     admin_id: int = Field(gt=0)
     message: str = Field(min_length=1, max_length=4000)
+
+
+class SupportNotificationAck(BaseModel):
+    updated_at: str = Field(min_length=1)
 
 
 class SupportStore:
@@ -64,10 +69,12 @@ class SupportStore:
                 """
             )
 
-    def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path, timeout=10)
-        connection.row_factory = sqlite3.Row
-        return connection
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        with closing(sqlite3.connect(self.path, timeout=10)) as connection:
+            connection.row_factory = sqlite3.Row
+            with connection:
+                yield connection
 
     @staticmethod
     def _now() -> str:
@@ -159,10 +166,19 @@ class SupportStore:
                 "SELECT * FROM support_tickets WHERE notified_at IS NULL AND status = 'open' "
                 "ORDER BY id LIMIT 20"
             ).fetchall()
-            now = self._now()
-            for row in rows:
-                connection.execute("UPDATE support_tickets SET notified_at = ? WHERE id = ?", (now, row["id"]))
         return [self.get_ticket(row["id"]) for row in rows]
+
+    def acknowledge_notification(self, ticket_id: int, updated_at: str) -> bool:
+        with self._connect() as connection:
+            if connection.execute("SELECT id FROM support_tickets WHERE id = ?", (ticket_id,)).fetchone() is None:
+                return False
+            # A message arriving during Telegram delivery must remain pending.
+            connection.execute(
+                "UPDATE support_tickets SET notified_at = ? "
+                "WHERE id = ? AND updated_at = ? AND notified_at IS NULL AND status = 'open'",
+                (self._now(), ticket_id, updated_at),
+            )
+        return True
 
     def add_admin_message(self, ticket_id: int, admin_id: int, message: str) -> dict | None:
         now = self._now()
@@ -248,6 +264,14 @@ async def add_admin_message(ticket_id: int, data: InternalSupportMessage, respon
     if ticket is None:
         raise HTTPException(404, detail="ticket_not_found")
     return ticket
+
+
+@router.post("/internal/tickets/{ticket_id}/notified", dependencies=[Depends(require_bot_secret)])
+async def acknowledge_notification(ticket_id: int, data: SupportNotificationAck, response: Response, store: Annotated[SupportStore, Depends(store_for)]):
+    no_store(response)
+    if not store.acknowledge_notification(ticket_id, data.updated_at):
+        raise HTTPException(404, detail="ticket_not_found")
+    return {"ok": True}
 
 
 @router.post("/internal/tickets/{ticket_id}/close", dependencies=[Depends(require_bot_secret)])

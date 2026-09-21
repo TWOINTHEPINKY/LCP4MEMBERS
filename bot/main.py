@@ -12,7 +12,7 @@ from aiogram.utils.token import TokenValidationError
 from config.settings import ConfigurationError, get_settings
 from handlers import router
 from handlers.support import notify_ticket
-from support_client import SupportBackendError, get_pending_tickets
+from support_client import acknowledge_notification, get_pending_tickets
 from keyboards.main_keyboard import get_menu_button
 from texts.messages import START_COMMAND_DESCRIPTION
 
@@ -23,9 +23,14 @@ async def support_notifier(bot: Bot, auth_http: ClientSession) -> None:
     while True:
         try:
             for ticket in await get_pending_tickets(auth_http):
-                await notify_ticket(bot, ticket)
-        except SupportBackendError:
-            logger.warning("Не удалось проверить новые обращения поддержки.")
+                try:
+                    if await notify_ticket(bot, ticket):
+                        await acknowledge_notification(auth_http, ticket["id"], ticket["updated_at"])
+                except Exception as error:
+                    logger.warning("Не удалось обработать уведомление поддержки (%s).", type(error).__name__)
+        except Exception as error:
+            # Background failures must not stop future cycles; never log payloads.
+            logger.warning("Не удалось проверить новые обращения поддержки (%s).", type(error).__name__)
         await asyncio.sleep(5)
 
 
@@ -36,7 +41,6 @@ async def main() -> None:
 
     logger.info("Запуск LIZARD Bot")
     async with Bot(token=settings.bot_token) as bot, ClientSession(timeout=ClientTimeout(total=10)) as auth_http:
-        notifier = asyncio.create_task(support_notifier(bot, auth_http))
         # Заменяем default-список команд; /admin остаётся доступен через его handler.
         await bot.set_my_commands(
             commands=[BotCommand(command="start", description=START_COMMAND_DESCRIPTION)],
@@ -46,6 +50,7 @@ async def main() -> None:
         # Без chat_id устанавливается меню по умолчанию для личных чатов.
         await bot.set_chat_menu_button(menu_button=get_menu_button())
         logger.info("Кнопка «Кабинет» настроена; запуск polling")
+        notifier = asyncio.create_task(support_notifier(bot, auth_http))
         try:
             await dispatcher.start_polling(
                 bot,
