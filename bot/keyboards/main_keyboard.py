@@ -12,7 +12,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text=CONNECT_BUTTON,
-                    web_app=WebAppInfo(url=settings.web_url("login")),
+                    web_app=WebAppInfo(url=settings.web_url("login?next=/plans")),
                     style="success",
                 )
             ],

@@ -1,9 +1,26 @@
 // Run: node --test tests/routing.test.mjs
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
-import { migrateLegacyHashRoute } from '../src/lib/routing.js'
+import { getLoginNextPath, migrateLegacyHashRoute } from '../src/lib/routing.js'
 
 const originalWindow = globalThis.window
+test('login destinations accept only explicitly allowed internal paths', () => {
+  for (const path of ['/app', '/plans', '/devices']) {
+    assert.equal(getLoginNextPath(`?next=${path}`), path)
+    assert.equal(getLoginNextPath(`?next=${encodeURIComponent(path)}&tgWebAppVersion=8`), path)
+  }
+})
+
+test('missing, unsafe, ambiguous and non-allowlisted next destinations fall back to /app', () => {
+  for (const value of ['', 'https://evil.test/plans', '//evil.test', '/\\evil.test', 'javascript:alert(1)',
+    '/login', '/support', '/plans/', '/plans?next=https://evil.test', '/plans#x', '/plans/../login',
+    ' /plans', '/plans\n', '%2Fplans', '/PLANS', 'https://lcpn3twork.com/plans']) {
+    assert.equal(getLoginNextPath(`?next=${encodeURIComponent(value)}`), '/app', value)
+  }
+  for (const search of ['', '?other=/plans', '?next=/plans&next=/devices', '?next=/plans&next=/plans']) {
+    assert.equal(getLoginNextPath(search), '/app', search)
+  }
+})
 afterEach(() => {
   if (originalWindow === undefined) delete globalThis.window
   else globalThis.window = originalWindow

@@ -2,6 +2,7 @@
 // Replace this model with real business data later; identity comes from /auth/me.
 export const dashboardMock = {
   subscription: { planName: 'Plus', active: true, expiresAt: '2026-10-10', remainingDays: 21, totalDays: 30 },
+  access: { subscriptionUrl: null, happDeepLink: null },
   devices: {
     limit: 5,
     items: [

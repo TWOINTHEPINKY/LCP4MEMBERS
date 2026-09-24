@@ -14,8 +14,10 @@
     import Login from '../src/pages/Login.jsx'
     import Account from '../src/pages/Account.jsx'
     import Plans from '../src/pages/Plans.jsx'
+    import Devices from '../src/pages/Devices.jsx'
     import AccountLogoutButton from '../src/components/AccountLogoutButton.jsx'
     import App from '../src/App.jsx'
+    import '../src/index.css'
     import { dashboardMock } from '../src/data/dashboardMock.js'
 
     const host = document.querySelector('#fixture')
@@ -28,7 +30,7 @@
       id, category: 'connection', status: 'open', updated_at: '2026-09-21T00:00:00Z',
       messages: [{ id, author_kind: 'user', message: `Request ${id}`, created_at: '2026-09-21T00:00:00Z' }],
     })
-    let root, config, requests, popups, locations, currentPath, navigationType, blockStorage, logoutErrors, navigate
+    let root, config, requests, popups, locations, currentPath, currentSearch, navigationType, blockStorage, logoutErrors, navigate
     const storage = () => {
       const data = new Map()
       return {
@@ -54,6 +56,7 @@
     }
     function Probe() {
       currentPath = useLocation().pathname
+      currentSearch = useLocation().search
       navigationType = useNavigationType()
       navigate = useNavigate()
       locations.push(currentPath)
@@ -143,6 +146,8 @@
             h(Account, { lang: options.lang || 'en' }),
           ) }),
           h(Route, { path: '/account', element: h(Navigate, { to: '/app', replace: true }) }),
+          h(Route, { path: '/plans', element: h(Plans, { lang: options.lang || 'en' }) }),
+          h(Route, { path: '/devices', element: h(Devices, { lang: options.lang || 'en', model: options.deviceModel }) }),
           h(Route, { path: '/', element: h('p', null, 'Home') }),
         ),
       )))
@@ -158,6 +163,10 @@
     window.mountPlansForFunctionalChecks = async lang => {
       await mount('/plans', { fullApp: true, browser: true, savedLanguage: lang })
       await waitFor(() => host.querySelector('#plans-title'), 'Plans functional fixture')
+    }
+    window.mountDevicesForFunctionalChecks = async (lang, browser = true) => {
+      await mount('/devices', { fullApp: true, browser, savedLanguage: lang })
+      await waitFor(() => host.querySelector('#devices-page-title'), 'Devices functional fixture')
     }
     function internalBack() {
       const link = host.querySelector('.internal-page-title .internal-back')
@@ -200,6 +209,35 @@
         assert(navigationType === 'REPLACE', 'Mini App login added a history entry')
         assert(count('/auth/telegram-webapp') === 1, 'Duplicate Mini App exchange')
         noChallenge()
+      })
+      for (const browser of [false, true]) {
+        await check(`${browser ? 'Browser challenge' : 'Telegram'} login respects next=/plans and replaces history`, async () => {
+          await mount('/login?next=/plans', { fullApp: true, browser, savedLanguage: 'en' })
+          if (browser) {
+            await waitFor(() => host.querySelector('.custom-telegram-btn'), 'browser plans login')
+            click('Login with Telegram')
+          }
+          await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'plans after authentication')
+          assert(navigationType === 'REPLACE' && localStorage.getItem(tokenKey) === 'fixture-jwt', 'Plans login lost token or replace semantics')
+          if (!browser) { noChallenge(); assert(count('/auth/telegram-webapp') === 1, 'Repeated Telegram exchange') }
+        })
+        await check(`${browser ? 'Browser challenge' : 'Telegram'} login rejects an external next destination`, async () => {
+          await mount('/login?next=https%3A%2F%2Fevil.test', { browser })
+          if (browser) {
+            await waitFor(() => host.querySelector('.custom-telegram-btn'), 'browser unsafe-next login')
+            click('Login with Telegram')
+          }
+          await waitFor(loaded, 'safe login fallback')
+          assert(navigationType === 'REPLACE', 'Fallback did not replace history')
+        })
+      }
+      await check('Public Connect opens login with the plans destination', async () => {
+        await mount('/', { fullApp: true, browser: true })
+        await waitFor(() => host.querySelector('.connect-btn'), 'landing Connect')
+        assert(host.querySelector('.connect-btn').getAttribute('href') === '/login?next=/plans', 'Wrong public Connect destination')
+        host.querySelector('.connect-btn').click()
+        await waitFor(() => currentPath === '/login' && host.querySelector('.login-card'), 'Connect login')
+        assert(currentSearch === '?next=/plans', 'Connect lost next query')
       })
       await check('Legacy /account replaces the route with /app', async () => {
         await mount('/account', { token: 'fixture-jwt' })
@@ -650,6 +688,208 @@
         await waitFor(loaded, 'no-username profile')
         const metadata = host.querySelector('.dashboard-profile-meta')
         assert(metadata.textContent === 'TG ID 123456', 'Missing ID or stray separator')
+      })
+      for (const [lang, browser] of [['ru', true], ['en', false]]) {
+        await check(`Devices onboarding summary, clients, compact rows and statistics (${lang}, ${browser ? 'browser' : 'Telegram'})`, async () => {
+          await mount('/devices', { fullApp: true, browser, savedLanguage: lang })
+          await waitFor(() => host.querySelector('.device-summary'), 'devices summary')
+          const summary = host.querySelector('.device-summary')
+          assert(summary.textContent.includes(dashboardMock.subscription.planName) && summary.textContent.includes(lang === 'ru' ? 'Активна' : 'Active'), 'Subscription plan/status missing')
+          assert(summary.querySelector('time').dateTime === dashboardMock.subscription.expiresAt, 'Subscription expiry changed')
+          assert(summary.querySelector('dd').textContent === (lang === 'ru' ? '2 из 5' : '2 of 5'), 'Device limit missing')
+          const rows = [...host.querySelectorAll('.device-row')]
+          assert(rows.length === dashboardMock.devices.items.length, 'Wrong number of device rows')
+          rows.forEach((row, index) => {
+            assert(row.querySelector('h3').textContent === dashboardMock.devices.items[index].name, 'Device name changed')
+            assert(row.querySelector('p').textContent === dashboardMock.devices.items[index].platform && row.querySelector('svg'), 'Device platform/icon missing')
+            const reset = row.querySelector('.device-reset')
+            assert(reset?.disabled && reset.textContent === (lang === 'ru' ? 'СБРОСИТЬ' : 'RESET'), 'Device reset must be visibly present and disabled')
+            reset.click()
+          })
+          const resetAll = host.querySelector('.device-reset-all')
+          assert(resetAll?.disabled && resetAll.textContent === (lang === 'ru' ? 'СБРОСИТЬ ВСЕ УСТРОЙСТВА' : 'RESET ALL DEVICES'), 'Reset all must be disabled')
+          assert(host.querySelector('#device-reset-note').textContent, 'Reset availability explanation missing')
+          resetAll.click()
+          assert(host.querySelectorAll('.device-row').length === rows.length, 'Disabled reset removed devices')
+          assert(!host.querySelector('.device-card') && !host.querySelector('.device-manage-button'), 'Old large/fake device actions remain')
+          assert(host.querySelector('.device-total-usage').textContent.includes(String(dashboardMock.devices.totalUsageGb)), 'Usage changed')
+          const list = host.querySelector('.device-list-section')
+          assert(list.compareDocumentPosition(host.querySelector('.device-stat-hero')) & Node.DOCUMENT_POSITION_FOLLOWING, 'Usage hero precedes devices')
+          assert(list.compareDocumentPosition(host.querySelector('.usage-chart')) & Node.DOCUMENT_POSITION_FOLLOWING, 'Chart precedes devices')
+          assert(host.querySelector('.usage-chart-line').getAttribute('points').split(' ').length === dashboardMock.devices.usage.length, 'Usage chart lost values')
+          const quick = host.querySelectorAll('.device-quick-section.dashboard-glass')
+          assert(quick.length === 1 && !quick[0].querySelector('.dashboard-glass'), 'Quick connection must be one glass block without nested cards')
+          const buttons = [...quick[0].querySelectorAll('.device-client-action')]
+          assert(buttons.length === 2 && buttons[0].textContent.includes('Happ') && buttons[1].textContent.includes('INCY'), 'Client actions missing')
+          for (const button of buttons) {
+            assert(button.querySelector('svg[aria-hidden="true"]') && !button.textContent.includes('↗'), 'Client action should have a centered visual mark, not a menu arrow')
+            button.focus()
+            button.click()
+            await waitFor(() => host.querySelector('dialog[open] [role="status"]'), 'honest no-access state')
+            const status = host.querySelector('[role="status"]').textContent
+            assert(status.includes(lang === 'ru' ? 'Доступ к VPN ещё не выдан' : 'VPN access has not been issued yet'), 'Missing access was reported as success')
+            host.querySelector('.device-dialog-close').click()
+            await waitFor(() => !host.querySelector('dialog'), 'close access status')
+            assert(document.activeElement === button, 'Modal lost trigger focus')
+          }
+          assert(requests.length === 0, 'Preview devices triggered backend requests')
+        })
+      }
+      await check('Device wizard advances, preserves choices on Back, reuses access handling and supports close/cancel/backdrop', async () => {
+        await mount('/devices', { fullApp: true, browser: true, savedLanguage: 'en' })
+        await waitFor(() => host.querySelector('.device-add-button'), 'wizard trigger')
+        const trigger = host.querySelector('.device-add-button')
+        trigger.focus(); trigger.click()
+        await waitFor(() => host.querySelector('dialog[open] input[name="device-platform"]'), 'wizard platform step')
+        assert(host.querySelectorAll('input[name="device-platform"]').length === 5, 'Platform choices missing')
+        assert(host.querySelector('dialog').contains(document.activeElement), 'Focus did not enter modal')
+        host.querySelector('input[value="linux"]').click()
+        host.querySelector('.device-wizard-actions button').click()
+        await waitFor(() => host.querySelector('input[name="device-client"]'), 'wizard client step')
+        const downloads = [...host.querySelectorAll('.device-downloads a')]
+        assert(downloads.length === 2 && downloads[0].href === 'https://github.com/Happ-proxy/happ-desktop/releases/latest' && downloads[1].href === 'https://github.com/INCY-DEV/incy-platforms/releases/latest', 'Wrong official Linux downloads')
+        for (const link of downloads) {
+          assert(link.target === '_blank' && link.rel.includes('noopener'), 'Download should open separately and safely')
+          link.addEventListener('click', event => event.preventDefault(), { once: true })
+          link.click()
+          await pause(25)
+          assert(host.querySelector('input[name="device-client"]') && !host.querySelector('.device-connection-status'), 'Downloading was treated as a VPN connection')
+        }
+        host.querySelector('input[value="incy"]').click()
+        host.querySelector('.device-wizard-actions button').click()
+        await waitFor(() => host.querySelector('input[value="linux"]:checked'), 'Back preserves platform')
+        host.querySelector('.device-wizard-actions button').click()
+        await waitFor(() => host.querySelector('input[value="incy"]:checked'), 'Next preserves client')
+        host.querySelector('.device-wizard-actions button:last-child').click()
+        await waitFor(() => host.querySelector('.device-connection-actions'), 'wizard connection step')
+        assert(host.querySelector('.device-setup-selection h4').textContent === 'INCY' && host.querySelector('.device-setup-selection p').textContent === 'Linux', 'Wrong connection selection')
+        assert(host.querySelector('.device-show-qr').disabled, 'QR must stay disabled until supported')
+        host.querySelector('.device-open-client').click()
+        await waitFor(() => host.querySelector('dialog [role="status"]'), 'wizard uses same unavailable action')
+        assert(host.querySelector('dialog [role="status"]').textContent.includes('VPN access has not been issued yet'), 'Wizard faked a connection')
+        host.querySelector('dialog').dispatchEvent(new Event('cancel', { cancelable: true }))
+        await waitFor(() => !host.querySelector('dialog'), 'native Escape/cancel closes')
+        assert(document.activeElement === trigger, 'Cancel lost focus')
+        trigger.click()
+        await waitFor(() => host.querySelector('dialog[open]'), 'wizard reopen')
+        assert(host.querySelector('input[value="ios"]:checked'), 'New wizard retained stale steps')
+        const modal = host.querySelector('dialog')
+        const bounds = modal.getBoundingClientRect()
+        modal.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: bounds.left + 10, clientY: bounds.top + 10 }))
+        await pause(25)
+        assert(host.querySelector('dialog[open]'), 'Inside click closed modal')
+        modal.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 0, clientY: 0 }))
+        await waitFor(() => !host.querySelector('dialog'), 'backdrop closes')
+        trigger.click()
+        await waitFor(() => host.querySelector('dialog[open]'), 'wizard reopen for close button')
+        host.querySelector('.device-dialog-close').click()
+        await waitFor(() => !host.querySelector('dialog'), 'close button closes wizard')
+        assert(requests.length === 0, 'Wizard made fake backend calls')
+      })
+      await check('Device dialog cycles through links and enabled form controls, excluding noninteractive controls', async () => {
+        await mount('/devices', { browser: true })
+        await waitFor(() => host.querySelector('.device-add-button'), 'keyboard wizard trigger')
+        host.querySelector('.device-add-button').click()
+        await waitFor(() => host.querySelector('input[name="device-platform"]'), 'keyboard platform step')
+        host.querySelector('.device-wizard-actions button:last-child').click()
+        await waitFor(() => host.querySelector('.device-downloads a'), 'keyboard download links')
+        const modal = host.querySelector('dialog')
+        const first = modal.querySelector('.device-dialog-close')
+        const probe = document.createElement('div')
+        modal.append(probe)
+        const tab = (element, shiftKey = false) => {
+          element.focus()
+          element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }))
+        }
+        try {
+          for (const markup of ['<a href="https://example.test">Download</a>', '<input>', '<input type="checkbox">', '<select><option>Client</option></select>', '<textarea></textarea>', '<button>Action</button>']) {
+            probe.innerHTML = `${markup}<button disabled>Disabled</button><input type="hidden"><input hidden><button tabindex="-1">Skipped</button>`
+            const last = probe.firstElementChild
+            tab(first, true)
+            assert(document.activeElement === last, 'Shift+Tab skipped an enabled interactive control')
+            tab(last)
+            assert(document.activeElement === first, 'Tab did not wrap back to the first control')
+          }
+        } finally { probe.remove() }
+        for (const link of modal.querySelectorAll('.device-downloads a')) {
+          link.focus()
+          assert(document.activeElement === link, 'Official download link is not focusable')
+        }
+        host.querySelector('.device-dialog-close').click()
+        await waitFor(() => !host.querySelector('dialog'), 'close keyboard wizard')
+      })
+      for (const lang of ['ru', 'en']) {
+        await check(`Device connection copies only issued links and handles unavailable or denied clipboard (${lang})`, async () => {
+          const previousClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+          const issuedUrl = 'https://access.test/sub/issued?token=fixture%2Bvalue'
+          const invalidUrls = { malformed: 'not-a-url', insecure: 'http://access.test/sub', credentials: 'https://user:secret@access.test/sub', script: 'javascript:alert(1)', whitespace: 'https://access.test/ sub', relative: '//access.test/sub' }
+          try {
+            for (const scenario of ['no-access', 'missing', 'empty', 'blank', ...Object.keys(invalidUrls), 'issued', 'denied', 'no-clipboard', 'inactive', 'expired']) {
+              const copies = []
+              Object.defineProperty(navigator, 'clipboard', { configurable: true, value: scenario === 'no-clipboard' ? undefined : {
+                writeText: async value => {
+                  if (scenario === 'denied') throw new DOMException('Denied', 'NotAllowedError')
+                  copies.push(value)
+                },
+              } })
+              const hasLink = ['issued', 'denied', 'no-clipboard', 'inactive', 'expired'].includes(scenario)
+              const access = scenario === 'no-access' ? undefined : { subscriptionUrl: hasLink ? issuedUrl : invalidUrls[scenario] ?? (scenario === 'blank' ? '   ' : scenario === 'empty' ? '' : undefined) }
+              const deviceModel = { ...dashboardMock, access, subscription: { ...dashboardMock.subscription, active: scenario !== 'inactive' } }
+              await mount('/devices', { browser: true, lang, deviceModel })
+              await waitFor(() => host.querySelector('.device-add-button'), 'copy wizard trigger')
+              host.querySelector('.device-add-button').click()
+              await waitFor(() => host.querySelector('input[name="device-platform"]'), 'copy platform step')
+              host.querySelector('.device-wizard-actions button:last-child').click()
+              await waitFor(() => host.querySelector('input[name="device-client"]'), 'copy client step')
+              host.querySelector('.device-wizard-actions button:last-child').click()
+              await waitFor(() => host.querySelector('.device-copy-link'), 'copy connection step')
+              assert(host.querySelector('.device-show-qr').disabled, 'QR must stay disabled')
+              if (scenario === 'expired') deviceModel.subscription.active = false
+              host.querySelector('.device-copy-link').click()
+              if (scenario === 'inactive' || scenario === 'expired') {
+                await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'inactive copy redirects to plans')
+                assert(copies.length === 0 && !host.querySelector('dialog') && requests.length === 0, 'Stale access was copied or requested after entitlement ended')
+                continue
+              }
+              await waitFor(() => host.querySelector('dialog [role="status"]'), 'copy result')
+              const status = host.querySelector('dialog [role="status"]').textContent
+              if (!hasLink) {
+                assert(status.includes(lang === 'ru' ? 'Доступ к VPN ещё не выдан' : 'VPN access has not been issued yet'), 'Missing link was not reported honestly')
+                assert(copies.length === 0 && !host.querySelector('.device-copy-status'), 'Missing link was copied or reported as copied')
+              } else if (scenario === 'issued') {
+                assert(copies.length === 1 && copies[0] === issuedUrl, 'Copy changed or invented a subscription URL')
+                assert(status === (lang === 'ru' ? 'Ссылка подписки скопирована.' : 'Subscription link copied.'), 'Copy success missing')
+                assert(!host.querySelector('.device-connection-status'), 'Copy was reported as a connection')
+              } else {
+                assert(copies.length === 0 && status.includes(lang === 'ru' ? 'Не удалось скопировать' : 'Could not copy'), 'Clipboard failure was reported as success')
+              }
+              assert(currentPath === '/devices' && requests.length === 0 && popups.length === 0, 'Copy caused navigation, an API call or a client handoff')
+            }
+          } finally {
+            if (previousClipboard) Object.defineProperty(navigator, 'clipboard', previousClipboard)
+            else delete navigator.clipboard
+          }
+        })
+      }
+      await check('Inactive subscription routes both quick connection and wizard action to plans', async () => {
+        const deviceModel = { ...dashboardMock, subscription: { ...dashboardMock.subscription, active: false } }
+        for (const mode of ['happ', 'incy', 'wizard']) {
+          await mount('/devices', { browser: true, deviceModel })
+          await waitFor(() => host.querySelector('.device-summary'), 'inactive subscription')
+          assert(host.querySelector('.device-summary').textContent.includes('Inactive'), 'Inactive status missing')
+          if (mode === 'wizard') {
+            host.querySelector('.device-add-button').click()
+            await waitFor(() => host.querySelector('input[name="device-platform"]'), 'inactive wizard')
+            host.querySelector('.device-wizard-actions button:last-child').click()
+            await waitFor(() => host.querySelector('input[name="device-client"]'), 'inactive client choice')
+            host.querySelector('.device-wizard-actions button:last-child').click()
+            await waitFor(() => host.querySelector('.device-connection-actions'), 'inactive final step')
+            host.querySelector('.device-open-client').click()
+          } else host.querySelectorAll('.device-client-action')[mode === 'happ' ? 0 : 1].click()
+          await waitFor(() => currentPath === '/plans' && host.querySelector('#plans-title'), 'inactive subscription plans action')
+          assert(!host.querySelector('dialog') && requests.length === 0, 'Inactive action issued access or called backend')
+        }
+        assert(dashboardMock.subscription.active && dashboardMock.devices.items.length === 2, 'Wizard mutated preview data')
       })
       await check('Dashboard support action opens the internal page without external Telegram links', async () => {
         await mount('/app', { fullApp: true, browser: true, token: 'fixture-jwt' })

@@ -137,7 +137,7 @@ function HomePage({ t, fading, typewriterText, isTyping, connectBtnRef, handleMa
             <span className="quote-mark">"</span>
           </h1>
           <div className="hero-buttons">
-            <Link to="/login" className="btn btn-primary connect-btn magnetic-btn" ref={connectBtnRef} onMouseMove={(e) => handleMagneticMove(e, connectBtnRef)} onMouseLeave={() => handleMagneticLeave(connectBtnRef)} aria-label="Connect to VPN">
+            <Link to="/login?next=/plans" className="btn btn-primary connect-btn magnetic-btn" ref={connectBtnRef} onMouseMove={(e) => handleMagneticMove(e, connectBtnRef)} onMouseLeave={() => handleMagneticLeave(connectBtnRef)} aria-label="Connect to VPN">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
               <span>{t.connect}</span>
             </Link>

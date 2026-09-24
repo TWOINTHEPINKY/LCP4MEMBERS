@@ -3,6 +3,13 @@ const legacyHashRoutes = new Map([
   ['#/login', '/login'],
 ])
 
+const loginDestinations = new Set(['/app', '/plans', '/devices'])
+
+export function getLoginNextPath(search = '') {
+  const values = new URLSearchParams(search).getAll('next')
+  return values.length === 1 && loginDestinations.has(values[0]) ? values[0] : '/app'
+}
+
 export function migrateLegacyHashRoute() {
   if (typeof window === 'undefined') return
   const { location, history } = window

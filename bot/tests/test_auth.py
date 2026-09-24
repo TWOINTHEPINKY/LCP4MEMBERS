@@ -169,7 +169,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
 
     def test_keyboard_clean_routes(self):
         self.assertEqual(get_main_keyboard().inline_keyboard[0][0].web_app.url,
-                         "https://lcpn3twork.com/login")
+                         "https://lcpn3twork.com/login?next=/plans")
         self.assertEqual(get_menu_button().web_app.url, "https://lcpn3twork.com/app")
 
 

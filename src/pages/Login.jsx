@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import LogoIcon from '../assets/icons/logo.svg?react'
 import { ApiError, apiRequest, authenticateTelegramWebApp, authError, authText, getTelegramInitData, readChallenge, rememberChallenge, saveToken, telegramAuthError } from '../lib/auth'
+import { getLoginNextPath } from '../lib/routing'
 
 export default function Login({ lang }) {
   const navigate = useNavigate()
+  const nextPath = getLoginNextPath(useLocation().search)
   const text = authText[lang]
   const [initData] = useState(getTelegramInitData)
   const [challenge, setChallenge] = useState(() => initData ? null : readChallenge())
@@ -19,12 +21,12 @@ export default function Login({ lang }) {
     authenticateTelegramWebApp(initData).then(result => {
       if (!active) return
       try { saveToken(result.access_token) } catch { throw new ApiError('storage') }
-      navigate('/app', { replace: true })
+      navigate(nextPath, { replace: true })
     }).catch(error => {
       if (active) setPhase(telegramAuthError(error))
     })
     return () => { active = false }
-  }, [initData, navigate, attempt])
+  }, [initData, navigate, attempt, nextPath])
 
   useEffect(() => () => {
     startRequest.current?.controller.abort()
@@ -62,7 +64,7 @@ export default function Login({ lang }) {
             return
           }
           rememberChallenge(null)
-          navigate('/app', { replace: true })
+          navigate(nextPath, { replace: true })
         } else {
           finish(['cancelled', 'expired'].includes(result.status) ? result.status : 'backend')
         }
@@ -75,7 +77,7 @@ export default function Login({ lang }) {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [challenge, initData, navigate])
+  }, [challenge, initData, navigate, nextPath])
 
   async function startLogin() {
     if (initData || startRequest.current || challenge) return
